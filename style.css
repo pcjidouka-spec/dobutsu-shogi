@@ -1,0 +1,368 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.welcome-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('cute_animals_background_1765284306015.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.welcome-content {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 60px 80px;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.welcome-title {
+    font-size: 3.5em;
+    color: #764ba2;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.waiting-message {
+    font-size: 1.5em;
+    color: #667eea;
+    margin-top: 20px;
+    font-weight: 500;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+
+.container {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 900px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.turn-indicator {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #667eea;
+}
+
+#current-turn {
+    color: #764ba2;
+}
+
+
+
+
+#reset-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#reset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+#reset-btn:active {
+    transform: translateY(0);
+}
+
+.game-layout {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.captured-area {
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 10px;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.5s ease;
+}
+
+.opponent-captured {
+    align-self: flex-start;
+    transform: rotate(180deg);
+}
+
+.player-captured {
+    align-self: flex-end;
+}
+
+.player-name-label {
+    font-size: 1em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.captured-label {
+    font-size: 0.75em;
+    color: #666;
+    margin-bottom: 8px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.captured-pieces {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+}
+
+.captured-piece {
+    width: 50px;
+    height: 50px;
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.captured-piece:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+.captured-piece.selected {
+    background: #667eea;
+    color: white;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4.5px;
+    background: #333;
+    padding: 4.5px;
+    border-radius: 10px;
+    transition: transform 0.5s ease;
+    flex-shrink: 0;
+    width: 450px;
+    height: 600px;
+}
+
+.board.flipped {
+    transform: rotate(180deg);
+}
+
+.cell {
+    aspect-ratio: 1;
+    background: #f0e6d2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    width: 100%;
+    height: 100%;
+}
+
+.cell:hover {
+    background: #e6dcc8;
+}
+
+.cell.selected {
+    background: #ffd700;
+    box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.cell.valid-move {
+    background: #90EE90;
+}
+
+.cell.valid-move::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #228B22;
+    border-radius: 50%;
+    opacity: 0.6;
+}
+
+.piece {
+    font-size: 5.25em;
+    user-select: none;
+    transition: transform 0.2s;
+    line-height: 1;
+}
+
+.piece.gote {
+    transform: rotate(180deg);
+}
+
+
+
+.piece:hover {
+    transform: scale(1.1);
+}
+
+.piece.gote:hover {
+    transform: rotate(180deg) scale(1.1);
+}
+
+
+
+.game-announcement {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 4em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(118, 75, 162, 0.8);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    white-space: nowrap;
+}
+
+.game-announcement.show {
+    opacity: 1;
+}
+
+.message {
+    text-align: center;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #764ba2;
+    min-height: 30px;
+    margin-top: 15px;
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 1.5em;
+    }
+
+    .piece {
+        font-size: 2.5em;
+    }
+
+    .game-layout {
+        gap: 10px;
+    }
+
+    .captured-area {
+        min-width: 60px;
+        padding: 8px;
+    }
+
+    .captured-piece {
+        width: 40px;
+        height: 40px;
+        font-size: 1.5em;
+    }
+
+    .captured-label {
+        font-size: 0.7em;
+    }
+
+    .player-name-label {
+        font-size: 0.85em;
+    }
+
+    .board {
+        width: 300px;
+        height: 400px;
+        gap: 3px;
+        padding: 3px;
+    }
+
+    .game-announcement {
+        font-size: 2.5em;
+    }
+
+    .welcome-content {
+        padding: 40px 50px;
+    }
+
+    .welcome-title {
+        font-size: 2em;
+    }
+
+    .waiting-message {
+        font-size: 1.2em;
+    }
+}

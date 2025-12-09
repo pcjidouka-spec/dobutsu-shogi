@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動物将棋 - Dobutsu Shogi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="welcome-screen" id="welcome-screen">
+        <div class="welcome-content">
+            <h1 class="welcome-title">動物将棋 by 長舩</h1>
+            <p class="waiting-message" id="waiting-message"></p>
+        </div>
+    </div>
+
+    <div class="container" id="game-container" style="display: none;">
+        <h1>動物将棋</h1>
+
+        <div class="game-info">
+            <div class="turn-indicator">
+                <span id="current-turn">先手</span>の番
+            </div>
+            <button id="reset-btn">タイトルに戻る</button>
+        </div>
+
+        <div class="game-layout">
+            <div class="captured-area opponent-captured" id="captured-opponent">
+                <div class="player-name-label" id="opponent-name">相手</div>
+                <div class="captured-label">持ち駒</div>
+                <div class="captured-pieces" id="captured-pieces-opponent"></div>
+            </div>
+
+            <div class="board" id="board"></div>
+
+            <div class="captured-area player-captured" id="captured-player">
+                <div class="player-name-label" id="player-name">あなた</div>
+                <div class="captured-label">持ち駒</div>
+                <div class="captured-pieces" id="captured-pieces-player"></div>
+            </div>
+        </div>
+
+        <div class="game-announcement" id="game-announcement"></div>
+
+        <div class="message" id="message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
