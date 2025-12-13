@@ -17,11 +17,14 @@ class DobutsuShogi {
         this.board[0][1] = { type: 'lion', player: 'gote' };
         this.board[0][2] = { type: 'zou', player: 'gote' };
         this.board[1][1] = { type: 'hiyoko', player: 'gote' };
+
         this.board[3][0] = { type: 'zou', player: 'sente' };
         this.board[3][1] = { type: 'lion', player: 'sente' };
         this.board[3][2] = { type: 'kirin', player: 'sente' };
         this.board[2][1] = { type: 'hiyoko', player: 'sente' };
+
         this.captured = { sente: [], gote: [] };
+        this.currentPlayer = 'sente';
     }
 
     getPieceEmoji(type) {
@@ -59,7 +62,7 @@ class DobutsuShogi {
             zou: [[-1, -1], [-1, 1], [1, -1], [1, 1]],
             kirin: [[-1, 0], [0, -1], [0, 1], [1, 0]],
             hiyoko: [[forward, 0]],
-            niwatori: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0]]
+            niwatori: [[forward, -1], [forward, 0], [forward, 1], [0, -1], [0, 1], [-forward, 0]]
         };
         return directions[type] || [];
     }
@@ -74,22 +77,145 @@ class DobutsuShogi {
         return positions;
     }
 
+    // 駒を動かす
+    move(fromRow, fromCol, toRow, toCol) {
+        const piece = this.board[fromRow][fromCol];
+        const target = this.board[toRow][toCol];
+
+        // 駒を取る処理
+        if (target) {
+            let capturedType = target.type;
+            if (capturedType === 'niwatori') capturedType = 'hiyoko';
+            this.captured[this.currentPlayer].push(capturedType);
+        }
+
+        // 盤面の更新
+        this.board[toRow][toCol] = piece;
+        this.board[fromRow][fromCol] = null;
+
+        // 成り判定
+        if (piece.type === 'hiyoko') {
+            const promotionRow = this.currentPlayer === 'sente' ? 0 : 3;
+            if (toRow === promotionRow) {
+                piece.type = 'niwatori';
+            }
+        }
+
+        this.switchPlayer();
+        return { winner: this.checkWinner() };
+    }
+
+    // 持ち駒を打つ
+    drop(pieceType, row, col) {
+        const index = this.captured[this.currentPlayer].indexOf(pieceType);
+        if (index === -1) return false;
+
+        this.captured[this.currentPlayer].splice(index, 1);
+        this.board[row][col] = { type: pieceType, player: this.currentPlayer };
+
+        this.switchPlayer();
+        return { winner: this.checkWinner() };
+    }
+
     switchPlayer() {
         this.currentPlayer = this.currentPlayer === 'sente' ? 'gote' : 'sente';
     }
+
+    checkWinner() {
+        // ライオンがいなくなったか
+        let senteLion = false;
+        let goteLion = false;
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 3; c++) {
+                const p = this.board[r][c];
+                if (p && p.type === 'lion') {
+                    if (p.player === 'sente') senteLion = true;
+                    if (p.player === 'gote') goteLion = true;
+                }
+            }
+        }
+        if (!senteLion) return 'gote';
+        if (!goteLion) return 'sente';
+
+        // トライ（ライオンが相手陣地の一番奥に到達）
+        for (let c = 0; c < 3; c++) {
+            const p1 = this.board[0][c];
+            if (p1 && p1.type === 'lion' && p1.player === 'sente') return 'sente';
+            const p2 = this.board[3][c];
+            if (p2 && p2.type === 'lion' && p2.player === 'gote') return 'gote';
+        }
+
+        return null;
+    }
+
+    // コンピュータの思考ルーチン
+    makeComputerMove() {
+        const validMoves = [];
+
+        // 盤上の駒の移動
+        for (let r = 0; r < 4; r++) {
+            for (let c = 0; c < 3; c++) {
+                const p = this.board[r][c];
+                if (p && p.player === this.currentPlayer) {
+                    const moves = this.getValidMoves(r, c);
+                    moves.forEach(([tr, tc]) => {
+                        validMoves.push({ type: 'move', from: [r, c], to: [tr, tc] });
+                    });
+                }
+            }
+        }
+
+        // 持ち駒の使用
+        const emptyCells = this.getValidDropPositions();
+        const uniqueCaptured = [...new Set(this.captured[this.currentPlayer])];
+        if (emptyCells.length > 0) {
+            uniqueCaptured.forEach(type => {
+                emptyCells.forEach(([r, c]) => {
+                    validMoves.push({ type: 'drop', piece: type, to: [r, c] });
+                });
+            });
+        }
+
+        if (validMoves.length === 0) return null;
+
+        // 簡単な評価関数付きAI: 王手や取る手を優先する
+        // ここでは単純に「取れる駒があるなら取る」「勝てるなら勝つ」くらいの実装にする
+
+        // 勝つ手があればそれを選ぶ
+        for (const move of validMoves) {
+            const simulatedGame = this.clone();
+            if (move.type === 'move') {
+                simulatedGame.move(move.from[0], move.from[1], move.to[0], move.to[1]);
+            } else {
+                simulatedGame.drop(move.piece, move.to[0], move.to[1]);
+            }
+            if (simulatedGame.checkWinner() === this.currentPlayer) {
+                return move;
+            }
+        }
+
+        // 駒を取れる手があれば優先（ランダムに選ぶ）
+        const captureMoves = validMoves.filter(m => m.type === 'move' && this.board[m.to[0]][m.to[1]] !== null);
+        if (captureMoves.length > 0) {
+            return captureMoves[Math.floor(Math.random() * captureMoves.length)];
+        }
+
+        // それ以外はランダム
+        return validMoves[Math.floor(Math.random() * validMoves.length)];
+    }
+
+    clone() {
+        const newGame = new DobutsuShogi();
+        newGame.board = JSON.parse(JSON.stringify(this.board));
+        newGame.currentPlayer = this.currentPlayer;
+        newGame.captured = JSON.parse(JSON.stringify(this.captured));
+        return newGame;
+    }
 }
 
-// オンライン対戦UI管理
-class OnlineGameUI {
+// 共通UI基底クラス
+class BaseGameUI {
     constructor() {
-        this.game = new DobutsuShogi();
-        this.ws = null;
-        this.playerRole = null;
-        this.playerName = null;
-        this.opponentName = null;
-        this.isMyTurn = false;
-        this.canPlay = false; // ゲーム開始アナウンス後に操作可能になる
-
         this.boardElement = document.getElementById('board');
         this.messageElement = document.getElementById('message');
         this.turnElement = document.getElementById('current-turn');
@@ -101,192 +227,21 @@ class OnlineGameUI {
         this.announcementElement = document.getElementById('game-announcement');
         this.welcomeScreen = document.getElementById('welcome-screen');
         this.gameContainer = document.getElementById('game-container');
-        this.waitingMessage = document.getElementById('waiting-message');
-        this.matchCountElement = null; // 削除
 
         this.resetBtn.addEventListener('click', () => location.reload());
-        this.showNamePrompt();
     }
 
-    showNamePrompt() {
-        const name = prompt('プレイヤー名を入力してください:');
-        if (name) {
-            this.playerName = name;
-            // ウェルカム画面は表示したまま、待機メッセージを表示
-            this.waitingMessage.textContent = '対戦相手を探しています...';
-            this.connectToServer();
-        } else {
-            this.showNamePrompt();
-        }
-    }
-
-    connectToServer() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}`;
-
-        this.ws = new WebSocket(wsUrl);
-
-        this.ws.onopen = () => {
-            console.log('Connected to server');
-            this.messageElement.textContent = '対戦相手を探しています...';
-            this.ws.send(JSON.stringify({
-                type: 'join',
-                playerName: this.playerName
-            }));
+    getPieceEmoji(type) {
+        const pieces = {
+            lion: '🦁', zou: '🐘', kirin: '🦒',
+            hiyoko: '🐥', niwatori: '🐔'
         };
-
-        this.ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            this.handleServerMessage(data);
-        };
-
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            this.messageElement.textContent = 'サーバー接続エラー';
-        };
-
-        this.ws.onclose = () => {
-            console.log('Disconnected from server');
-            this.messageElement.textContent = 'サーバーから切断されました';
-        };
+        return pieces[type] || '';
     }
 
-    handleServerMessage(data) {
-        switch (data.type) {
-            case 'waiting':
-                this.waitingMessage.textContent = '対戦相手を待っています...';
-                break;
-
-            case 'gameStart':
-                // ウェルカム画面を非表示にしてゲーム画面を表示
-                this.welcomeScreen.style.display = 'none';
-                this.gameContainer.style.display = 'block';
-
-                this.playerRole = data.role;
-                this.opponentName = data.opponent;
-                this.isMyTurn = (this.playerRole === 'sente');
-                this.messageElement.textContent = `対戦開始！ vs ${this.opponentName}`;
-                this.resetBtn.textContent = 'タイトルに戻る';
-                // matchCount関連削除
-                this.updatePlayerNames();
-                this.render();
-                this.showGameStartAnnouncement();
-                break;
-
-            case 'move':
-                this.applyMove(data);
-                break;
-
-            case 'drop':
-                this.applyDrop(data);
-                break;
-
-            case 'gameOver':
-                this.handleGameOver(data);
-                break;
-
-            // rematch case 削除
-
-            case 'opponentDisconnected':
-                this.messageElement.textContent = '相手が切断しました';
-                break;
-        }
-    }
-
-    applyMove(data) {
-        const { fromRow, fromCol, toRow, toCol, currentPlayer, captured } = data;
-
-        const piece = this.game.board[fromRow][fromCol];
-        this.game.board[toRow][toCol] = piece;
-        this.game.board[fromRow][fromCol] = null;
-
-        if (piece.type === 'hiyoko') {
-            const promotionRow = piece.player === 'sente' ? 0 : 3;
-            if (toRow === promotionRow) {
-                this.game.board[toRow][toCol].type = 'niwatori';
-            }
-        }
-
-        this.game.captured = captured;
-        this.game.currentPlayer = currentPlayer;
-        this.isMyTurn = (this.playerRole === currentPlayer);
-        this.render();
-    }
-
-    applyDrop(data) {
-        const { pieceType, row, col, currentPlayer, captured } = data;
-
-        this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
-        this.game.captured = captured;
-        this.game.currentPlayer = currentPlayer;
-        this.isMyTurn = (this.playerRole === currentPlayer);
-        this.render();
-    }
-
-    handleGameOver(data) {
-        const winnerText = data.winner === 'sente' ? '先手' : '後手';
-        const youWon = data.winner === this.playerRole;
-        this.messageElement.textContent = youWon ? '勝利！' : '敗北...';
-        this.messageElement.style.color = youWon ? '#28a745' : '#dc3545';
-
-        // ゲーム終了後は操作不可にする
-        this.canPlay = false;
-
-        if (data.move) {
-            this.applyMove({ ...data.move, currentPlayer: this.game.currentPlayer, captured: this.game.captured });
-        } else if (data.drop) {
-            this.applyDrop({ ...data.drop, currentPlayer: this.game.currentPlayer, captured: this.game.captured });
-        }
-    }
-
-    render() {
-        this.renderBoard();
-        this.renderCaptured();
-        this.updateTurnIndicator();
-    }
-
-    updatePlayerNames() {
-        if (this.playerName && this.opponentName && this.playerRole) {
-            const playerRoleText = this.playerRole === 'sente' ? '先手' : '後手';
-            const opponentRoleText = this.playerRole === 'sente' ? '後手' : '先手';
-
-            this.playerNameElement.textContent = `${playerRoleText}：${this.playerName}`;
-            this.opponentNameElement.textContent = `${opponentRoleText}：${this.opponentName}`;
-        }
-    }
-
-
-
-    showGameStartAnnouncement() {
-        this.canPlay = false; // アナウンス中は操作不可
-
-        // 先手・後手の表示
-        const roleText = this.playerRole === 'sente' ? '先手' : '後手';
-        this.showAnnouncement(`あなたは${roleText}です`, 2000, () => {
-            // 対局開始の表示と同時に操作可能にする
-            this.canPlay = true; // 対局開始の表示と同時に操作可能
-            this.showAnnouncement('対局開始！', 2000);
-        });
-    }
-
-    showAnnouncement(text, duration, callback) {
-        this.announcementElement.textContent = text;
-        this.announcementElement.classList.add('show');
-
-        setTimeout(() => {
-            this.announcementElement.classList.remove('show');
-            setTimeout(() => {
-                if (callback) callback();
-            }, 500); // フェードアウトの時間
-        }, duration);
-    }
-
-
-    renderBoard() {
+    renderBoard(game, playerRole) {
         this.boardElement.innerHTML = '';
-
-        // Flip the board if player is gote
-        if (this.playerRole === 'gote') {
+        if (playerRole === 'gote') {
             this.boardElement.classList.add('flipped');
         } else {
             this.boardElement.classList.remove('flipped');
@@ -299,11 +254,11 @@ class OnlineGameUI {
                 cell.dataset.row = row;
                 cell.dataset.col = col;
 
-                const piece = this.game.board[row][col];
+                const piece = game.board[row][col];
                 if (piece) {
                     const pieceElement = document.createElement('div');
                     pieceElement.className = `piece ${piece.player}`;
-                    pieceElement.textContent = this.game.getPieceEmoji(piece.type);
+                    pieceElement.textContent = this.getPieceEmoji(piece.type);
                     cell.appendChild(pieceElement);
                 }
 
@@ -313,64 +268,230 @@ class OnlineGameUI {
         }
     }
 
-    renderCaptured() {
-        if (!this.playerRole) return;
-
+    renderCaptured(game, playerRole) {
         this.playerCapturedElement.innerHTML = '';
         this.opponentCapturedElement.innerHTML = '';
 
-        const opponentRole = this.playerRole === 'sente' ? 'gote' : 'sente';
+        const opponentRole = playerRole === 'sente' ? 'gote' : 'sente';
 
-        // 自分の持ち駒を表示
-        this.game.captured[this.playerRole].forEach((type, index) => {
+        // 自分の持ち駒
+        game.captured[playerRole].forEach((type, index) => {
             const piece = document.createElement('div');
             piece.className = 'captured-piece';
-            piece.textContent = this.game.getPieceEmoji(type);
-            piece.addEventListener('click', () => this.handleCapturedClick(this.playerRole, index, type));
+            piece.textContent = this.getPieceEmoji(type);
+            piece.addEventListener('click', () => this.handleCapturedClick(playerRole, index, type));
             this.playerCapturedElement.appendChild(piece);
         });
 
-        // 相手の持ち駒を表示
-        this.game.captured[opponentRole].forEach((type, index) => {
+        // 相手の持ち駒
+        game.captured[opponentRole].forEach((type) => {
             const piece = document.createElement('div');
             piece.className = 'captured-piece';
-            piece.textContent = this.game.getPieceEmoji(type);
-            // 相手の持ち駒はクリックできない
+            piece.textContent = this.getPieceEmoji(type);
             this.opponentCapturedElement.appendChild(piece);
         });
     }
 
+    showAnnouncement(text, duration = 2000, callback) {
+        this.announcementElement.textContent = text;
+        this.announcementElement.classList.add('show');
+        setTimeout(() => {
+            this.announcementElement.classList.remove('show');
+            if (callback) setTimeout(callback, 500);
+        }, duration);
+    }
+
+    // Abstract methods to be implemented by subclasses
+    handleCellClick(row, col) { }
+    handleCapturedClick(player, index, type) { }
+}
+
+// オンライン対戦UI
+class OnlineGameUI extends BaseGameUI {
+    constructor() {
+        super();
+        this.game = new DobutsuShogi();
+        this.ws = null;
+        this.playerRole = null;
+        this.playerName = null;
+        this.opponentName = null;
+        this.isMyTurn = false;
+        this.canPlay = false;
+        this.waitingMessage = document.getElementById('waiting-message');
+
+        this.setup();
+    }
+
+    setup() {
+        const name = prompt('プレイヤー名を入力してください:');
+        if (name) {
+            this.playerName = name;
+            // モード選択画面などを非表示にして待機メッセージを表示
+            document.getElementById('mode-selection').style.display = 'none';
+            this.waitingMessage.style.display = 'block';
+            this.waitingMessage.textContent = '対戦相手を探しています...';
+            this.connectToServer();
+        } else {
+            location.reload(); // 名前入力キャンセルの場合
+        }
+    }
+
+    connectToServer() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+            this.ws.send(JSON.stringify({ type: 'join', playerName: this.playerName }));
+        };
+
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            this.handleServerMessage(data);
+        };
+
+        this.ws.onclose = () => {
+            this.messageElement.textContent = 'サーバーから切断されました';
+        };
+    }
+
+    handleServerMessage(data) {
+        switch (data.type) {
+            case 'waiting':
+                this.waitingMessage.textContent = '対戦相手を待っています...';
+                break;
+            case 'gameStart':
+                this.welcomeScreen.style.display = 'none';
+                this.gameContainer.style.display = 'block';
+                this.playerRole = data.role;
+                this.opponentName = data.opponent;
+                this.isMyTurn = (this.playerRole === 'sente');
+                this.messageElement.textContent = `対戦開始！ vs ${this.opponentName}`;
+                this.updatePlayerNames();
+                this.render();
+                this.showGameStartAnnouncement();
+                break;
+            case 'move':
+                this.applyMove(data);
+                break;
+            case 'drop':
+                this.applyDrop(data);
+                break;
+            case 'gameOver':
+                this.handleGameOver(data);
+                break;
+            case 'opponentDisconnected':
+                this.messageElement.textContent = '相手が切断しました';
+                this.canPlay = false;
+                break;
+        }
+    }
+
+    applyMove(data) {
+        // サーバーからの情報で同期
+        const { fromRow, fromCol, toRow, toCol, currentPlayer, captured } = data;
+        const piece = this.game.board[fromRow][fromCol];
+        this.game.board[toRow][toCol] = piece;
+        this.game.board[fromRow][fromCol] = null;
+
+        // 成り
+        if (piece.type === 'hiyoko') {
+            const promotionRow = piece.player === 'sente' ? 0 : 3;
+            if (toRow === promotionRow) this.game.board[toRow][toCol].type = 'niwatori';
+        }
+
+        this.game.captured = captured;
+        this.game.currentPlayer = currentPlayer;
+        this.isMyTurn = (this.playerRole === currentPlayer);
+        this.render();
+    }
+
+    applyDrop(data) {
+        const { pieceType, row, col, currentPlayer, captured } = data;
+        this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
+        this.game.captured = captured;
+        this.game.currentPlayer = currentPlayer;
+        this.isMyTurn = (this.playerRole === currentPlayer);
+        this.render();
+    }
+
+    handleGameOver(data) {
+        if (data.move) {
+            const { fromRow, fromCol, toRow, toCol } = data.move;
+            // 最後の動きを適用(簡易的)
+            const piece = this.game.board[fromRow][fromCol];
+            this.game.board[toRow][toCol] = piece;
+            this.game.board[fromRow][fromCol] = null;
+        } else if (data.drop) {
+            const { pieceType, row, col } = data.drop;
+            this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
+        }
+
+        const youWon = data.winner === this.playerRole;
+        this.messageElement.textContent = youWon ? '勝利！' : '敗北...';
+        this.messageElement.style.color = youWon ? '#28a745' : '#dc3545';
+        this.canPlay = false;
+        this.render();
+    }
+
+    render() {
+        this.renderBoard(this.game, this.playerRole);
+        this.renderCaptured(this.game, this.playerRole);
+        this.updateTurnIndicator();
+    }
+
+    updatePlayerNames() {
+        const playerRoleText = this.playerRole === 'sente' ? '先手' : '後手';
+        const opponentRoleText = this.playerRole === 'sente' ? '後手' : '先手';
+        this.playerNameElement.textContent = `${playerRoleText}：${this.playerName}`;
+        this.opponentNameElement.textContent = `${opponentRoleText}：${this.opponentName}`;
+    }
+
+    updateTurnIndicator() {
+        const isMyTurnTotal = this.game.currentPlayer === this.playerRole;
+        const name = isMyTurnTotal ? this.playerName : this.opponentName;
+        this.turnElement.textContent = name;
+        this.turnElement.style.color = isMyTurnTotal ? '#28a745' : '#dc3545';
+    }
+
+    showGameStartAnnouncement() {
+        this.canPlay = false;
+        const roleText = this.playerRole === 'sente' ? '先手' : '後手';
+        this.showAnnouncement(`あなたは${roleText}です`, 2000, () => {
+            this.canPlay = true;
+            this.showAnnouncement('対局開始！', 1000);
+        });
+    }
+
     handleCellClick(row, col) {
-        if (!this.canPlay || !this.isMyTurn || !this.playerRole) return;
+        if (!this.canPlay || !this.isMyTurn) return;
 
-        if (this.game.selectedCaptured !== null) {
-            const validPositions = this.game.getValidDropPositions();
-            const isValid = validPositions.some(([r, c]) => r === row && c === col);
-
-            if (isValid) {
+        // 持ち駒選択中の場合
+        if (this.game.selectedCaptured) {
+            const validDrops = this.game.getValidDropPositions();
+            if (validDrops.some(p => p[0] === row && p[1] === col)) {
                 this.ws.send(JSON.stringify({
                     type: 'drop',
                     pieceType: this.game.selectedCaptured.type,
                     row, col
                 }));
                 this.game.selectedCaptured = null;
-                this.render();
             }
             return;
         }
 
         const piece = this.game.board[row][col];
-
-        if (this.game.selectedCell === null) {
+        // 駒選択
+        if (!this.game.selectedCell) {
             if (piece && piece.player === this.playerRole) {
                 this.game.selectedCell = { row, col };
+                this.render();
                 this.highlightValidMoves(row, col);
             }
         } else {
-            const validMoves = this.game.getValidMoves(this.game.selectedCell.row, this.game.selectedCell.col);
-            const isValid = validMoves.some(([r, c]) => r === row && c === col);
-
-            if (isValid) {
+            // 移動実行
+            const moves = this.game.getValidMoves(this.game.selectedCell.row, this.game.selectedCell.col);
+            if (moves.some(m => m[0] === row && m[1] === col)) {
                 this.ws.send(JSON.stringify({
                     type: 'move',
                     fromRow: this.game.selectedCell.row,
@@ -379,8 +500,8 @@ class OnlineGameUI {
                     toCol: col
                 }));
                 this.game.selectedCell = null;
-                this.render();
             } else {
+                // 選択変更
                 if (piece && piece.player === this.playerRole) {
                     this.game.selectedCell = { row, col };
                     this.render();
@@ -395,71 +516,222 @@ class OnlineGameUI {
 
     handleCapturedClick(player, index, type) {
         if (!this.canPlay || !this.isMyTurn || player !== this.playerRole) return;
-
         this.game.selectedCell = null;
-        this.game.selectedCaptured = { player, index, type };
+        this.game.selectedCaptured = { type, player };
         this.render();
         this.highlightValidDrops();
     }
 
     highlightValidMoves(row, col) {
-        const validMoves = this.game.getValidMoves(row, col);
+        const moves = this.game.getValidMoves(row, col);
         const cells = this.boardElement.querySelectorAll('.cell');
-
         cells.forEach(cell => {
-            const cellRow = parseInt(cell.dataset.row);
-            const cellCol = parseInt(cell.dataset.col);
-
-            if (cellRow === row && cellCol === col) {
-                cell.classList.add('selected');
-            }
-            if (validMoves.some(([r, c]) => r === cellRow && c === cellCol)) {
-                cell.classList.add('valid-move');
-            }
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            if (r === row && c === col) cell.classList.add('selected');
+            if (moves.some(m => m[0] === r && m[1] === c)) cell.classList.add('valid-move');
         });
     }
 
     highlightValidDrops() {
-        const validPositions = this.game.getValidDropPositions();
+        const drops = this.game.getValidDropPositions();
         const cells = this.boardElement.querySelectorAll('.cell');
-
         cells.forEach(cell => {
-            const cellRow = parseInt(cell.dataset.row);
-            const cellCol = parseInt(cell.dataset.col);
-
-            if (validPositions.some(([r, c]) => r === cellRow && c === cellCol)) {
-                cell.classList.add('valid-move');
-            }
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            if (drops.some(d => d[0] === r && d[1] === c)) cell.classList.add('valid-move');
         });
 
-        // プレイヤーの持ち駒エリア内の駒のみをハイライト
-        const playerCapturedPieces = this.playerCapturedElement.querySelectorAll('.captured-piece');
-        playerCapturedPieces.forEach((piece, idx) => {
-            if (this.game.selectedCaptured &&
-                this.game.captured[this.playerRole][idx] === this.game.selectedCaptured.type) {
-                piece.classList.add('selected');
+        // 持ち駒のハイライト
+        const capturedPieces = this.playerCapturedElement.querySelectorAll('.captured-piece');
+        // 簡易実装: typeが一致するものをハイライト
+        capturedPieces.forEach(el => {
+            if (el.textContent === this.getPieceEmoji(this.game.selectedCaptured.type)) {
+                el.classList.add('selected');
             }
         });
-    }
-
-    updateTurnIndicator() {
-        if (!this.playerName || !this.opponentName) return;
-
-        // 現在の手番のプレイヤー名を取得
-        const currentPlayerName = this.game.currentPlayer === this.playerRole
-            ? this.playerName
-            : this.opponentName;
-
-        this.turnElement.textContent = currentPlayerName;
-
-        if (this.isMyTurn) {
-            this.turnElement.style.color = '#28a745';
-        } else {
-            this.turnElement.style.color = '#dc3545';
-        }
     }
 }
 
+// ローカル対戦（vs コンピュータ）UI
+class LocalGameUI extends BaseGameUI {
+    constructor() {
+        super();
+        this.game = new DobutsuShogi();
+        this.playerRole = 'sente'; // プレイヤーは常に先手とする（後でランダム化も可）
+        this.computerRole = 'gote';
+        this.playerName = 'あなた';
+        this.opponentName = 'コンピュータ';
+        this.canPlay = false;
+
+        this.setup();
+    }
+
+    setup() {
+        this.welcomeScreen.style.display = 'none';
+        this.gameContainer.style.display = 'block';
+        this.playerNameElement.textContent = `先手：${this.playerName}`;
+        this.opponentNameElement.textContent = `後手：${this.opponentName}`;
+        this.messageElement.textContent = '対戦開始！';
+
+        this.render();
+        this.showAnnouncement('あなたは先手です', 2000, () => {
+            this.canPlay = true;
+            this.showAnnouncement('対局開始！', 1000);
+        });
+    }
+
+    render() {
+        this.renderBoard(this.game, this.playerRole);
+        this.renderCaptured(this.game, this.playerRole);
+
+        const isPlayerTurn = this.game.currentPlayer === this.playerRole;
+        this.turnElement.textContent = isPlayerTurn ? this.playerName : this.opponentName;
+        this.turnElement.style.color = isPlayerTurn ? '#28a745' : '#dc3545';
+
+        if (this.game.currentPlayer === this.computerRole) {
+            this.canPlay = false;
+            setTimeout(() => this.computerMove(), 1000); // 少し待ってから動く
+        }
+    }
+
+    computerMove() {
+        const move = this.game.makeComputerMove();
+        if (move) {
+            let result;
+            if (move.type === 'move') {
+                result = this.game.move(move.from[0], move.from[1], move.to[0], move.to[1]);
+            } else {
+                result = this.game.drop(move.piece, move.to[0], move.to[1]);
+            }
+
+            if (result.winner) {
+                this.render();
+                this.handleGameOver(result.winner);
+            } else {
+                this.canPlay = true;
+                this.render();
+            }
+        } else {
+            // 投了？
+            this.handleGameOver(this.playerRole);
+        }
+    }
+
+    handleCellClick(row, col) {
+        if (!this.canPlay || this.game.currentPlayer !== this.playerRole) return;
+
+        // 持ち駒選択中
+        if (this.game.selectedCaptured) {
+            const validDrops = this.game.getValidDropPositions();
+            if (validDrops.some(p => p[0] === row && p[1] === col)) {
+                const result = this.game.drop(this.game.selectedCaptured.type, row, col);
+                this.game.selectedCaptured = null;
+                if (result.winner) {
+                    this.render();
+                    this.handleGameOver(result.winner);
+                } else {
+                    this.render();
+                }
+            } else {
+                // キャンセル
+                this.game.selectedCaptured = null;
+                this.render();
+            }
+            return;
+        }
+
+        const piece = this.game.board[row][col];
+        if (!this.game.selectedCell) {
+            if (piece && piece.player === this.playerRole) {
+                this.game.selectedCell = { row, col };
+                this.render();
+                this.highlightValidMoves(row, col);
+            }
+        } else {
+            const moves = this.game.getValidMoves(this.game.selectedCell.row, this.game.selectedCell.col);
+            if (moves.some(m => m[0] === row && m[1] === col)) {
+                const result = this.game.move(
+                    this.game.selectedCell.row,
+                    this.game.selectedCell.col,
+                    row, col
+                );
+                this.game.selectedCell = null;
+                if (result.winner) {
+                    this.render();
+                    this.handleGameOver(result.winner);
+                } else {
+                    this.render();
+                }
+            } else {
+                // 選択変更
+                if (piece && piece.player === this.playerRole) {
+                    this.game.selectedCell = { row, col };
+                    this.render();
+                    this.highlightValidMoves(row, col);
+                } else {
+                    this.game.selectedCell = null;
+                    this.render();
+                }
+            }
+        }
+    }
+
+    handleCapturedClick(player, index, type) {
+        if (!this.canPlay || this.game.currentPlayer !== this.playerRole) return;
+        this.game.selectedCell = null;
+        this.game.selectedCaptured = { type, player };
+        this.render();
+        this.highlightValidDrops();
+    }
+
+    // オンラインと同じハイライトロジック（共通化できればベストだが今回はコピペで）
+    highlightValidMoves(row, col) {
+        const moves = this.game.getValidMoves(row, col);
+        const cells = this.boardElement.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            if (r === row && c === col) cell.classList.add('selected');
+            if (moves.some(m => m[0] === r && m[1] === c)) cell.classList.add('valid-move');
+        });
+    }
+
+    highlightValidDrops() {
+        const drops = this.game.getValidDropPositions();
+        const cells = this.boardElement.querySelectorAll('.cell');
+        cells.forEach(cell => {
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+            if (drops.some(d => d[0] === r && d[1] === c)) cell.classList.add('valid-move');
+        });
+        const capturedPieces = this.playerCapturedElement.querySelectorAll('.captured-piece');
+        capturedPieces.forEach(el => {
+            if (el.textContent === this.getPieceEmoji(this.game.selectedCaptured.type)) {
+                el.classList.add('selected');
+            }
+        });
+    }
+
+    handleGameOver(winner) {
+        this.canPlay = false;
+        const youWon = winner === this.playerRole;
+        this.messageElement.textContent = youWon ? 'あなたの勝利！' : 'コンピュータの勝利';
+        this.messageElement.style.color = youWon ? '#28a745' : '#dc3545';
+    }
+}
+
+
+// エントリーポイント
 window.addEventListener('DOMContentLoaded', () => {
-    new OnlineGameUI();
+    const vsComputerBtn = document.getElementById('vs-computer-btn');
+    const vsOnlineBtn = document.getElementById('vs-online-btn');
+
+    vsComputerBtn.addEventListener('click', () => {
+        new LocalGameUI();
+    });
+
+    vsOnlineBtn.addEventListener('click', () => {
+        new OnlineGameUI();
+    });
 });
