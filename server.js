@@ -18,6 +18,7 @@ const wss = new WebSocket.Server({ server });
 // ゲームルーム管理
 const rooms = new Map();
 const waitingPlayers = [];
+const rematchRequests = new Map(); // roomId -> Set of players who requested rematch
 
 wss.on('connection', (ws) => {
     console.log('New client connected');
@@ -52,7 +53,9 @@ function handleMessage(ws, data) {
         case 'drop':
             handleDrop(ws, data);
             break;
-
+        case 'rematch':
+            handleRematch(ws);
+            break;
     }
 }
 
@@ -148,6 +151,8 @@ function handleMove(ws, data) {
     const winner = checkWinCondition(room);
 
     if (winner) {
+        // 再戦リクエストをリセット
+        rematchRequests.delete(room.id);
         broadcastToRoom(room, {
             type: 'gameOver',
             winner: winner,
@@ -191,6 +196,8 @@ function handleDrop(ws, data) {
     const winner = checkWinCondition(room);
 
     if (winner) {
+        // 再戦リクエストをリセット
+        rematchRequests.delete(room.id);
         broadcastToRoom(room, {
             type: 'gameOver',
             winner: winner,
@@ -295,6 +302,64 @@ function checkWinCondition(room) {
     }
 
     return null;
+}
+
+function handleRematch(ws) {
+    const room = rooms.get(ws.roomId);
+    if (!room) return;
+
+    const playerRole = getPlayerRole(ws, room);
+    
+    // 再戦リクエストを記録
+    if (!rematchRequests.has(room.id)) {
+        rematchRequests.set(room.id, new Set());
+    }
+    rematchRequests.get(room.id).add(playerRole);
+
+    // 両プレイヤーが再戦を希望しているかチェック
+    const requests = rematchRequests.get(room.id);
+    if (requests.size === 2) {
+        // 両方が再戦を希望している場合、ゲームをリセット
+        room.board = initializeBoard();
+        room.captured = { sente: [], gote: [] };
+        
+        // 先手・後手を入れ替える
+        const temp = room.players.sente;
+        room.players.sente = room.players.gote;
+        room.players.gote = temp;
+        room.currentPlayer = 'sente';
+
+        // 再戦リクエストをリセット
+        rematchRequests.delete(room.id);
+
+        // 両プレイヤーに再戦開始を通知（正しい役割を送信）
+        const senteWs = room.players.sente;
+        const goteWs = room.players.gote;
+        
+        if (senteWs && senteWs.readyState === WebSocket.OPEN) {
+            senteWs.send(JSON.stringify({
+                type: 'rematchAccepted',
+                role: 'sente',
+                opponent: goteWs.playerName
+            }));
+        }
+        
+        if (goteWs && goteWs.readyState === WebSocket.OPEN) {
+            goteWs.send(JSON.stringify({
+                type: 'rematchAccepted',
+                role: 'gote',
+                opponent: senteWs.playerName
+            }));
+        }
+    } else {
+        // 片方だけが再戦を希望している場合、相手に通知
+        const opponent = room.players.sente === ws ? room.players.gote : room.players.sente;
+        if (opponent && opponent.readyState === WebSocket.OPEN) {
+            opponent.send(JSON.stringify({
+                type: 'rematchRequested'
+            }));
+        }
+    }
 }
 
 function generateRoomId() {

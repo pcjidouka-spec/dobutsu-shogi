@@ -12,6 +12,10 @@
     <div class="welcome-screen" id="welcome-screen">
         <div class="welcome-content">
             <h1 class="welcome-title">動物将棋 by 長舩</h1>
+            <div class="mode-selection" id="mode-selection">
+                <button class="mode-btn" id="online-mode-btn">オンライン対戦</button>
+                <button class="mode-btn" id="ai-mode-btn">コンピューター対戦</button>
+            </div>
             <p class="waiting-message" id="waiting-message"></p>
         </div>
     </div>
@@ -43,6 +47,16 @@
         </div>
 
         <div class="game-announcement" id="game-announcement"></div>
+
+        <div class="rematch-confirmation" id="rematch-confirmation" style="display: none;">
+            <div class="rematch-content">
+                <p class="rematch-question">再戦しますか？</p>
+                <div class="rematch-buttons">
+                    <button class="rematch-btn rematch-yes" id="rematch-yes-btn">はい</button>
+                    <button class="rematch-btn rematch-no" id="rematch-no-btn">いいえ</button>
+                </div>
+            </div>
+        </div>
 
         <div class="message" id="message"></div>
     </div>
