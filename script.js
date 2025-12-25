@@ -1386,13 +1386,23 @@ class AIGameUI {
             }
         }
 
+        // 手番交代
+        this.game.switchPlayer();
+        
+        // 千日手判定用に状態を記録（手番交代後の状態）
+        const positionKey = this.game.getPositionKey();
+        this.game.positionHistory.push(positionKey);
+        // 履歴が長くなりすぎないように、最新100手分のみ保持
+        if (this.game.positionHistory.length > 100) {
+            this.game.positionHistory.shift();
+        }
+
+        // 勝利判定（手番交代後）
         const winner = this.game.checkWinCondition();
         if (winner) {
             this.handleGameOver(winner);
             return;
         }
-
-        this.game.switchPlayer();
         this.isMyTurn = false;
         this.render();
         
@@ -1430,13 +1440,23 @@ class AIGameUI {
             this.game.captured[this.game.currentPlayer].splice(index, 1);
         }
 
+        // 手番交代
+        this.game.switchPlayer();
+        
+        // 千日手判定用に状態を記録（手番交代後の状態）
+        const positionKey = this.game.getPositionKey();
+        this.game.positionHistory.push(positionKey);
+        // 履歴が長くなりすぎないように、最新100手分のみ保持
+        if (this.game.positionHistory.length > 100) {
+            this.game.positionHistory.shift();
+        }
+
+        // 勝利判定（手番交代後）
         const winner = this.game.checkWinCondition();
         if (winner) {
             this.handleGameOver(winner);
             return;
         }
-
-        this.game.switchPlayer();
         this.isMyTurn = false;
         this.render();
         
