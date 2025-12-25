@@ -81,7 +81,8 @@ function handleJoin(ws, playerName) {
             },
             currentPlayer: 'sente',
             board: initializeBoard(),
-            captured: { sente: [], gote: [] }
+            captured: { sente: [], gote: [] },
+            positionHistory: [] // 千日手判定用の状態履歴
         };
 
         rooms.set(roomId, room);
@@ -147,6 +148,20 @@ function handleMove(ws, data) {
         }
     }
 
+    // ターン交代
+    room.currentPlayer = room.currentPlayer === 'sente' ? 'gote' : 'sente';
+
+    // 千日手判定用に状態を記録（手番交代後の状態）
+    if (!room.positionHistory) {
+        room.positionHistory = [];
+    }
+    const positionKey = getPositionKey(room.board, room.captured, room.currentPlayer);
+    room.positionHistory.push(positionKey);
+    // 履歴が長くなりすぎないように、最新100手分のみ保持
+    if (room.positionHistory.length > 100) {
+        room.positionHistory.shift();
+    }
+
     // 勝利判定
     const winner = checkWinCondition(room);
 
@@ -159,9 +174,6 @@ function handleMove(ws, data) {
             move: { fromRow, fromCol, toRow, toCol }
         });
     } else {
-        // ターン交代
-        room.currentPlayer = room.currentPlayer === 'sente' ? 'gote' : 'sente';
-
         broadcastToRoom(room, {
             type: 'move',
             fromRow,
@@ -183,13 +195,30 @@ function handleDrop(ws, data) {
 
     const { pieceType, row, col } = data;
 
-    // 駒を配置
-    room.board[row][col] = { type: pieceType, player: playerRole };
+    // にわとりを打つ場合はひよことして打つ
+    const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
 
-    // 持ち駒から削除
-    const index = room.captured[playerRole].indexOf(pieceType);
+    // 駒を配置
+    room.board[row][col] = { type: actualPieceType, player: playerRole };
+
+    // 持ち駒から削除（niwatoriの場合はhiyokoとして削除）
+    const index = room.captured[playerRole].indexOf(actualPieceType);
     if (index > -1) {
         room.captured[playerRole].splice(index, 1);
+    }
+
+    // ターン交代
+    room.currentPlayer = room.currentPlayer === 'sente' ? 'gote' : 'sente';
+
+    // 千日手判定用に状態を記録（手番交代後の状態）
+    if (!room.positionHistory) {
+        room.positionHistory = [];
+    }
+    const positionKey = getPositionKey(room.board, room.captured, room.currentPlayer);
+    room.positionHistory.push(positionKey);
+    // 履歴が長くなりすぎないように、最新100手分のみ保持
+    if (room.positionHistory.length > 100) {
+        room.positionHistory.shift();
     }
 
     // 勝利判定
@@ -204,9 +233,6 @@ function handleDrop(ws, data) {
             drop: { pieceType, row, col }
         });
     } else {
-        // ターン交代
-        room.currentPlayer = room.currentPlayer === 'sente' ? 'gote' : 'sente';
-
         broadcastToRoom(room, {
             type: 'drop',
             pieceType,
@@ -275,19 +301,102 @@ function initializeBoard() {
     return board;
 }
 
+// 駒の移動方向を取得
+function getPieceDirections(type, player) {
+    const forward = player === 'sente' ? -1 : 1;
+    const directions = {
+        'lion': [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
+        'zou': [[-1, -1], [-1, 1], [1, -1], [1, 1]],
+        'kirin': [[-1, 0], [0, -1], [0, 1], [1, 0]],
+        'hiyoko': [[forward, 0]],
+        'niwatori': [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, 0]]
+    };
+    return directions[type] || [];
+}
+
+// 盤面状態を文字列化（千日手判定用）
+function getPositionKey(board, captured, currentPlayer) {
+    // 盤面を文字列化
+    let boardStr = '';
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 3; col++) {
+            const piece = board[row][col];
+            if (piece) {
+                boardStr += `${row},${col},${piece.type},${piece.player};`;
+            } else {
+                boardStr += `${row},${col},null;`;
+            }
+        }
+    }
+    // 持ち駒をソートして文字列化（順序を統一）
+    const senteCaptured = [...(captured.sente || [])].sort().join(',');
+    const goteCaptured = [...(captured.gote || [])].sort().join(',');
+    // 手番を含める
+    return `${boardStr}|${senteCaptured}|${goteCaptured}|${currentPlayer}`;
+}
+
+// 特定のプレイヤーの可能な手を取得
+function getAllPossibleMoves(board, captured, player) {
+    const moves = [];
+    
+    // 盤上の駒の移動
+    for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 3; col++) {
+            const piece = board[row][col];
+            if (piece && piece.player === player) {
+                const directions = getPieceDirections(piece.type, piece.player);
+                for (const [dr, dc] of directions) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (newRow >= 0 && newRow < 4 && newCol >= 0 && newCol < 3) {
+                        const target = board[newRow][newCol];
+                        if (!target || target.player !== piece.player) {
+                            moves.push({ type: 'move', fromRow: row, fromCol: col, toRow: newRow, toCol: newCol });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 持ち駒の打ち（簡易版：空いているマスに打てる）
+    const uniquePieces = [...new Set(captured[player] || [])];
+    for (const pieceType of uniquePieces) {
+        // にわとりを打つ場合はひよことして打つ
+        const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 3; col++) {
+                if (!board[row][col]) {
+                    moves.push({ type: 'drop', pieceType: actualPieceType, row, col });
+                }
+            }
+        }
+    }
+    
+    return moves;
+}
+
 function checkWinCondition(room) {
     const board = room.board;
 
     // ライオンが取られたかチェック
     let senteLionExists = false;
     let goteLionExists = false;
+    let senteLionPos = null;
+    let goteLionPos = null;
 
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 3; col++) {
             const piece = board[row][col];
             if (piece && piece.type === 'lion') {
-                if (piece.player === 'sente') senteLionExists = true;
-                if (piece.player === 'gote') goteLionExists = true;
+                if (piece.player === 'sente') {
+                    senteLionExists = true;
+                    senteLionPos = { row, col };
+                }
+                if (piece.player === 'gote') {
+                    goteLionExists = true;
+                    goteLionPos = { row, col };
+                }
             }
         }
     }
@@ -295,10 +404,52 @@ function checkWinCondition(room) {
     if (!senteLionExists) return 'gote';
     if (!goteLionExists) return 'sente';
 
-    // ライオンが相手陣地に入ったかチェック
-    for (let col = 0; col < 3; col++) {
-        if (board[0][col]?.type === 'lion' && board[0][col]?.player === 'sente') return 'sente';
-        if (board[3][col]?.type === 'lion' && board[3][col]?.player === 'gote') return 'gote';
+    // 千日手判定（同じ状態が3回現れたら引き分け）
+    const currentPosition = getPositionKey(board, room.captured, room.currentPlayer);
+    if (!room.positionHistory) {
+        room.positionHistory = [];
+    }
+    let repetitionCount = 0;
+    for (const position of room.positionHistory) {
+        if (position === currentPosition) {
+            repetitionCount++;
+        }
+    }
+    if (repetitionCount >= 2) { // 現在の状態を含めて3回（履歴に2回 + 現在）
+        return 'draw';
+    }
+
+    // ライオンが相手陣地の最奥に入ったかチェック
+    // 先手のライオンが後手陣地（row=3）に入った場合
+    if (senteLionPos && senteLionPos.row === 3) {
+        // 次の相手（後手）の番でライオンが取られる可能性をチェック
+        const opponentMoves = getAllPossibleMoves(board, room.captured, 'gote');
+        const canCaptureLion = opponentMoves.some(move => {
+            if (move.type === 'move') {
+                return move.toRow === senteLionPos.row && move.toCol === senteLionPos.col;
+            }
+            return false;
+        });
+        // 取られない場合のみ勝利
+        if (!canCaptureLion) {
+            return 'sente';
+        }
+    }
+
+    // 後手のライオンが先手陣地（row=0）に入った場合
+    if (goteLionPos && goteLionPos.row === 0) {
+        // 次の相手（先手）の番でライオンが取られる可能性をチェック
+        const opponentMoves = getAllPossibleMoves(board, room.captured, 'sente');
+        const canCaptureLion = opponentMoves.some(move => {
+            if (move.type === 'move') {
+                return move.toRow === goteLionPos.row && move.toCol === goteLionPos.col;
+            }
+            return false;
+        });
+        // 取られない場合のみ勝利
+        if (!canCaptureLion) {
+            return 'gote';
+        }
     }
 
     return null;
@@ -322,6 +473,7 @@ function handleRematch(ws) {
         // 両方が再戦を希望している場合、ゲームをリセット
         room.board = initializeBoard();
         room.captured = { sente: [], gote: [] };
+        room.positionHistory = []; // 千日手判定用の状態履歴をリセット
         
         // 先手・後手を入れ替える
         const temp = room.players.sente;

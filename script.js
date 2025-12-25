@@ -6,6 +6,7 @@ class DobutsuShogi {
         this.selectedCell = null;
         this.selectedCaptured = null;
         this.captured = { sente: [], gote: [] };
+        this.positionHistory = []; // 千日手判定用の状態履歴
         this.initBoard();
     }
 
@@ -22,6 +23,7 @@ class DobutsuShogi {
         this.board[3][2] = { type: 'kirin', player: 'sente' };
         this.board[2][1] = { type: 'hiyoko', player: 'sente' };
         this.captured = { sente: [], gote: [] };
+        this.positionHistory = []; // 状態履歴をリセット
     }
 
     getPieceEmoji(type) {
@@ -78,17 +80,46 @@ class DobutsuShogi {
         this.currentPlayer = this.currentPlayer === 'sente' ? 'gote' : 'sente';
     }
 
+    // 盤面状態を文字列化（千日手判定用）
+    getPositionKey() {
+        // 盤面を文字列化
+        let boardStr = '';
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 3; col++) {
+                const piece = this.board[row][col];
+                if (piece) {
+                    boardStr += `${row},${col},${piece.type},${piece.player};`;
+                } else {
+                    boardStr += `${row},${col},null;`;
+                }
+            }
+        }
+        // 持ち駒をソートして文字列化（順序を統一）
+        const senteCaptured = [...this.captured.sente].sort().join(',');
+        const goteCaptured = [...this.captured.gote].sort().join(',');
+        // 手番を含める
+        return `${boardStr}|${senteCaptured}|${goteCaptured}|${this.currentPlayer}`;
+    }
+
     checkWinCondition() {
         // ライオンが取られたかチェック
         let senteLionExists = false;
         let goteLionExists = false;
+        let senteLionPos = null;
+        let goteLionPos = null;
 
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 3; col++) {
                 const piece = this.board[row][col];
                 if (piece && piece.type === 'lion') {
-                    if (piece.player === 'sente') senteLionExists = true;
-                    if (piece.player === 'gote') goteLionExists = true;
+                    if (piece.player === 'sente') {
+                        senteLionExists = true;
+                        senteLionPos = { row, col };
+                    }
+                    if (piece.player === 'gote') {
+                        goteLionExists = true;
+                        goteLionPos = { row, col };
+                    }
                 }
             }
         }
@@ -96,10 +127,49 @@ class DobutsuShogi {
         if (!senteLionExists) return 'gote';
         if (!goteLionExists) return 'sente';
 
-        // ライオンが相手陣地に入ったかチェック
-        for (let col = 0; col < 3; col++) {
-            if (this.board[0][col]?.type === 'lion' && this.board[0][col]?.player === 'sente') return 'sente';
-            if (this.board[3][col]?.type === 'lion' && this.board[3][col]?.player === 'gote') return 'gote';
+        // 千日手判定（同じ状態が3回現れたら引き分け）
+        const currentPosition = this.getPositionKey();
+        let repetitionCount = 0;
+        for (const position of this.positionHistory) {
+            if (position === currentPosition) {
+                repetitionCount++;
+            }
+        }
+        if (repetitionCount >= 2) { // 現在の状態を含めて3回（履歴に2回 + 現在）
+            return 'draw';
+        }
+
+        // ライオンが相手陣地の最奥に入ったかチェック
+        // 先手のライオンが後手陣地（row=3）に入った場合
+        if (senteLionPos && senteLionPos.row === 3) {
+            // 次の相手（後手）の番でライオンが取られる可能性をチェック
+            const opponentMoves = this.getAllPossibleMoves('gote');
+            const canCaptureLion = opponentMoves.some(move => {
+                if (move.type === 'move') {
+                    return move.toRow === senteLionPos.row && move.toCol === senteLionPos.col;
+                }
+                return false;
+            });
+            // 取られない場合のみ勝利
+            if (!canCaptureLion) {
+                return 'sente';
+            }
+        }
+
+        // 後手のライオンが先手陣地（row=0）に入った場合
+        if (goteLionPos && goteLionPos.row === 0) {
+            // 次の相手（先手）の番でライオンが取られる可能性をチェック
+            const opponentMoves = this.getAllPossibleMoves('sente');
+            const canCaptureLion = opponentMoves.some(move => {
+                if (move.type === 'move') {
+                    return move.toRow === goteLionPos.row && move.toCol === goteLionPos.col;
+                }
+                return false;
+            });
+            // 取られない場合のみ勝利
+            if (!canCaptureLion) {
+                return 'gote';
+            }
         }
 
         return null;
@@ -129,8 +199,10 @@ class DobutsuShogi {
         const validPositions = this.getValidDropPositions();
         
         for (const pieceType of uniquePieces) {
+            // にわとりを打つ場合はひよことして打つ
+            const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
             for (const [row, col] of validPositions) {
-                moves.push({ type: 'drop', pieceType, row, col });
+                moves.push({ type: 'drop', pieceType: actualPieceType, row, col });
             }
         }
 
@@ -166,16 +238,26 @@ class DobutsuShogi {
             }
         } else if (move.type === 'drop') {
             const { pieceType, row, col } = move;
-            this.board[row][col] = { type: pieceType, player: this.currentPlayer };
+            // にわとりを打つ場合はひよことして打つ
+            const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
+            this.board[row][col] = { type: actualPieceType, player: this.currentPlayer };
             
-            // 持ち駒から削除
-            const index = this.captured[this.currentPlayer].indexOf(pieceType);
+            // 持ち駒から削除（niwatoriの場合はhiyokoとして削除）
+            const index = this.captured[this.currentPlayer].indexOf(actualPieceType);
             if (index > -1) {
                 this.captured[this.currentPlayer].splice(index, 1);
             }
         }
 
         this.switchPlayer();
+        
+        // 千日手判定用に状態を記録（手番交代後の状態）
+        const positionKey = this.getPositionKey();
+        this.positionHistory.push(positionKey);
+        // 履歴が長くなりすぎないように、最新100手分のみ保持
+        if (this.positionHistory.length > 100) {
+            this.positionHistory.shift();
+        }
     }
 }
 
@@ -361,10 +443,13 @@ class OnlineGameUI {
     applyDrop(data) {
         const { pieceType, row, col, currentPlayer, captured } = data;
 
+        // にわとりを打つ場合はひよことして打つ
+        const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
+
         // 手の履歴に追加（手を打つ前の状態を保存）
         const moveData = {
             type: 'drop',
-            pieceType, row, col,
+            pieceType: actualPieceType, row, col,
             player: currentPlayer,
             boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
             capturedState: {
@@ -375,7 +460,7 @@ class OnlineGameUI {
         };
         this.moveHistory.push(moveData);
 
-        this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
+        this.game.board[row][col] = { type: actualPieceType, player: this.game.currentPlayer };
         this.game.captured = captured;
         this.game.currentPlayer = currentPlayer;
         this.isMyTurn = (this.playerRole === currentPlayer);
@@ -383,6 +468,31 @@ class OnlineGameUI {
     }
 
     handleGameOver(data) {
+        if (data.winner === 'draw') {
+            // 引き分け（千日手）
+            const resultText = '引き分け（千日手）';
+            this.messageElement.textContent = resultText;
+            this.messageElement.style.color = '#667eea';
+
+            // ゲーム終了後は操作不可にする
+            this.canPlay = false;
+
+            if (data.move) {
+                this.applyMove({ ...data.move, currentPlayer: this.game.currentPlayer, captured: this.game.captured });
+            } else if (data.drop) {
+                this.applyDrop({ ...data.drop, currentPlayer: this.game.currentPlayer, captured: this.game.captured });
+            }
+
+            // 盤上に大きく引き分けを表示
+            this.showGameOverAnnouncement(resultText, null);
+
+            // 感想戦モードを開始（少し遅延を入れる）
+            setTimeout(() => {
+                this.startReviewMode();
+            }, 2000);
+            return;
+        }
+
         const winnerText = data.winner === 'sente' ? '先手' : '後手';
         const youWon = data.winner === this.playerRole;
         const resultText = youWon ? '勝利！' : '敗北...';
@@ -410,10 +520,16 @@ class OnlineGameUI {
 
     showGameOverAnnouncement(text, isWin) {
         this.announcementElement.textContent = text;
-        this.announcementElement.style.color = isWin ? '#28a745' : '#dc3545';
-        this.announcementElement.style.textShadow = isWin 
-            ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)' 
-            : '0 0 20px rgba(220, 53, 69, 0.8), 0 0 40px rgba(220, 53, 69, 0.6)';
+        if (isWin === null) {
+            // 引き分け
+            this.announcementElement.style.color = '#667eea';
+            this.announcementElement.style.textShadow = '0 0 20px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.6)';
+        } else {
+            this.announcementElement.style.color = isWin ? '#28a745' : '#dc3545';
+            this.announcementElement.style.textShadow = isWin 
+                ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)' 
+                : '0 0 20px rgba(220, 53, 69, 0.8), 0 0 40px rgba(220, 53, 69, 0.6)';
+        }
         this.announcementElement.classList.add('show', 'game-over');
     }
 
@@ -886,9 +1002,11 @@ class OnlineGameUI {
                 this.game.switchPlayer();
             } else if (move.type === 'drop') {
                 const { pieceType, row, col } = move;
-                this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
+                // にわとりを打つ場合はひよことして打つ
+                const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
+                this.game.board[row][col] = { type: actualPieceType, player: this.game.currentPlayer };
                 
-                const index = this.game.captured[this.game.currentPlayer].indexOf(pieceType);
+                const index = this.game.captured[this.game.currentPlayer].indexOf(actualPieceType);
                 if (index > -1) {
                     this.game.captured[this.game.currentPlayer].splice(index, 1);
                 }
@@ -1284,13 +1402,16 @@ class AIGameUI {
     }
 
     executeDrop(pieceType, row, col) {
+        // にわとりを打つ場合はひよことして打つ
+        const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
+        
         // 手の履歴に追加（評価も含める）
         const gameCopyBefore = this.createGameCopy();
         const evaluationBefore = this.evaluatePosition(gameCopyBefore, 'gote');
         
         const moveData = {
             type: 'drop',
-            pieceType, row, col,
+            pieceType: actualPieceType, row, col,
             player: this.game.currentPlayer,
             boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
             capturedState: {
@@ -1301,9 +1422,10 @@ class AIGameUI {
         };
         this.moveHistory.push(moveData);
 
-        this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
+        this.game.board[row][col] = { type: actualPieceType, player: this.game.currentPlayer };
         
-        const index = this.game.captured[this.game.currentPlayer].indexOf(pieceType);
+        // 持ち駒から削除（niwatoriの場合はhiyokoとして削除）
+        const index = this.game.captured[this.game.currentPlayer].indexOf(actualPieceType);
         if (index > -1) {
             this.game.captured[this.game.currentPlayer].splice(index, 1);
         }
@@ -1870,6 +1992,26 @@ class AIGameUI {
     }
 
     handleGameOver(winner) {
+        if (winner === 'draw') {
+            // 引き分け（千日手）
+            const resultText = '引き分け（千日手）';
+            this.messageElement.textContent = resultText;
+            this.messageElement.style.color = '#667eea';
+            this.canPlay = false;
+            this.isMyTurn = false;
+
+            // 盤上に大きく引き分けを表示
+            this.showGameOverAnnouncement(resultText, null);
+
+            // 2秒後に再戦確認を表示（感想戦モードへのボタンも追加）
+            setTimeout(() => {
+                this.showRematchConfirmation();
+                // 感想戦モードへのボタンを追加
+                this.addReviewModeButton();
+            }, 2000);
+            return;
+        }
+
         const youWon = winner === this.playerRole;
         const resultText = youWon ? '勝利！' : '敗北...';
         
@@ -2289,10 +2431,16 @@ class AIGameUI {
 
     showGameOverAnnouncement(text, isWin) {
         this.announcementElement.textContent = text;
-        this.announcementElement.style.color = isWin ? '#28a745' : '#dc3545';
-        this.announcementElement.style.textShadow = isWin 
-            ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)' 
-            : '0 0 20px rgba(220, 53, 69, 0.8), 0 0 40px rgba(220, 53, 69, 0.6)';
+        if (isWin === null) {
+            // 引き分け
+            this.announcementElement.style.color = '#667eea';
+            this.announcementElement.style.textShadow = '0 0 20px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.6)';
+        } else {
+            this.announcementElement.style.color = isWin ? '#28a745' : '#dc3545';
+            this.announcementElement.style.textShadow = isWin 
+                ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)' 
+                : '0 0 20px rgba(220, 53, 69, 0.8), 0 0 40px rgba(220, 53, 69, 0.6)';
+        }
         this.announcementElement.classList.add('show', 'game-over');
         
         // 2秒後に再戦確認を表示（感想戦モードへのボタンも追加）
