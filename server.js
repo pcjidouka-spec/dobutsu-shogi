@@ -420,7 +420,8 @@ function checkWinCondition(room) {
     }
 
     // ライオンが相手陣地の最奥に入ったかチェック
-    // 先手のライオンが後手陣地（row=0）に入った場合
+    // 先手のライオンが後手陣地の最奥（row=0）に入った場合
+    // 初期配置では先手のライオンはrow=3（先手の陣地の最奥）にいるので、row=0に入った場合は敵陣地に入ったことになる
     if (senteLionPos && senteLionPos.row === 0) {
         // 次の相手（後手）の番でライオンが取られる可能性をチェック
         const opponentMoves = getAllPossibleMoves(board, room.captured, 'gote');
@@ -436,7 +437,8 @@ function checkWinCondition(room) {
         }
     }
 
-    // 後手のライオンが先手陣地（row=3）に入った場合
+    // 後手のライオンが先手陣地の最奥（row=3）に入った場合
+    // 初期配置では後手のライオンはrow=0（後手の陣地の最奥）にいるので、row=3に入った場合は敵陣地に入ったことになる
     if (goteLionPos && goteLionPos.row === 3) {
         // 次の相手（先手）の番でライオンが取られる可能性をチェック
         const opponentMoves = getAllPossibleMoves(board, room.captured, 'sente');

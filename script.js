@@ -590,8 +590,19 @@ class OnlineGameUI {
             for (let col = 0; col < 3; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.dataset.row = row;
-                cell.dataset.col = col;
+                
+                // 後手プレイヤーの場合、表示上の座標を反転
+                let displayRow = row;
+                let displayCol = col;
+                if (this.playerRole === 'gote') {
+                    displayRow = 3 - row;
+                    displayCol = 2 - col;
+                }
+                
+                cell.dataset.row = displayRow;
+                cell.dataset.col = displayCol;
+                cell.dataset.serverRow = row; // サーバー座標も保存
+                cell.dataset.serverCol = col;
 
                 const piece = this.game.board[row][col];
                 if (piece) {
@@ -601,7 +612,8 @@ class OnlineGameUI {
                     cell.appendChild(pieceElement);
                 }
 
-                cell.addEventListener('click', () => this.handleCellClick(row, col));
+                // クリックイベントには表示上の座標を渡す（後手の場合は反転済み）
+                cell.addEventListener('click', () => this.handleCellClick(displayRow, displayCol));
                 this.boardElement.appendChild(cell);
             }
         }
@@ -634,18 +646,33 @@ class OnlineGameUI {
         });
     }
 
+    // 後手プレイヤーの場合、表示上の座標をサーバー座標系に変換
+    convertToServerCoordinates(row, col) {
+        if (this.playerRole === 'gote') {
+            // 後手の場合は盤面が180度回転しているので、座標を反転
+            return { row: 3 - row, col: 2 - col };
+        }
+        return { row, col };
+    }
+
     handleCellClick(row, col) {
         if (!this.canPlay || !this.isMyTurn || !this.playerRole) return;
 
+        // サーバー座標系に変換
+        const serverCoords = this.convertToServerCoordinates(row, col);
+        const serverRow = serverCoords.row;
+        const serverCol = serverCoords.col;
+
         if (this.game.selectedCaptured !== null) {
             const validPositions = this.game.getValidDropPositions();
-            const isValid = validPositions.some(([r, c]) => r === row && c === col);
+            const isValid = validPositions.some(([r, c]) => r === serverRow && c === serverCol);
 
             if (isValid) {
                 this.ws.send(JSON.stringify({
                     type: 'drop',
                     pieceType: this.game.selectedCaptured.type,
-                    row, col
+                    row: serverRow,
+                    col: serverCol
                 }));
                 this.game.selectedCaptured = null;
                 this.render();
@@ -653,32 +680,32 @@ class OnlineGameUI {
             return;
         }
 
-        const piece = this.game.board[row][col];
+        const piece = this.game.board[serverRow][serverCol];
 
         if (this.game.selectedCell === null) {
             if (piece && piece.player === this.playerRole) {
-                this.game.selectedCell = { row, col };
-                this.highlightValidMoves(row, col);
+                this.game.selectedCell = { row: serverRow, col: serverCol };
+                this.highlightValidMoves(serverRow, serverCol);
             }
         } else {
             const validMoves = this.game.getValidMoves(this.game.selectedCell.row, this.game.selectedCell.col);
-            const isValid = validMoves.some(([r, c]) => r === row && c === col);
+            const isValid = validMoves.some(([r, c]) => r === serverRow && c === serverCol);
 
             if (isValid) {
                 this.ws.send(JSON.stringify({
                     type: 'move',
                     fromRow: this.game.selectedCell.row,
                     fromCol: this.game.selectedCell.col,
-                    toRow: row,
-                    toCol: col
+                    toRow: serverRow,
+                    toCol: serverCol
                 }));
                 this.game.selectedCell = null;
                 this.render();
             } else {
                 if (piece && piece.player === this.playerRole) {
-                    this.game.selectedCell = { row, col };
+                    this.game.selectedCell = { row: serverRow, col: serverCol };
                     this.render();
-                    this.highlightValidMoves(row, col);
+                    this.highlightValidMoves(serverRow, serverCol);
                 } else {
                     this.game.selectedCell = null;
                     this.render();
@@ -701,13 +728,13 @@ class OnlineGameUI {
         const cells = this.boardElement.querySelectorAll('.cell');
 
         cells.forEach(cell => {
-            const cellRow = parseInt(cell.dataset.row);
-            const cellCol = parseInt(cell.dataset.col);
+            const serverRow = parseInt(cell.dataset.serverRow);
+            const serverCol = parseInt(cell.dataset.serverCol);
 
-            if (cellRow === row && cellCol === col) {
+            if (serverRow === row && serverCol === col) {
                 cell.classList.add('selected');
             }
-            if (validMoves.some(([r, c]) => r === cellRow && c === cellCol)) {
+            if (validMoves.some(([r, c]) => r === serverRow && c === serverCol)) {
                 cell.classList.add('valid-move');
             }
         });
@@ -718,10 +745,10 @@ class OnlineGameUI {
         const cells = this.boardElement.querySelectorAll('.cell');
 
         cells.forEach(cell => {
-            const cellRow = parseInt(cell.dataset.row);
-            const cellCol = parseInt(cell.dataset.col);
+            const serverRow = parseInt(cell.dataset.serverRow);
+            const serverCol = parseInt(cell.dataset.serverCol);
 
-            if (validPositions.some(([r, c]) => r === cellRow && c === cellCol)) {
+            if (validPositions.some(([r, c]) => r === serverRow && c === serverCol)) {
                 cell.classList.add('valid-move');
             }
         });
