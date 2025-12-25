@@ -55,6 +55,35 @@ body {
     background-clip: text;
 }
 
+.howto-link-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.howto-link {
+    display: inline-block;
+    color: #667eea;
+    text-decoration: none;
+    font-size: 1.2em;
+    font-weight: 500;
+    padding: 10px 20px;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.howto-link:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+}
+
+.howto-link:active {
+    transform: translateY(0);
+}
+
 .mode-selection {
     display: flex;
     flex-direction: column;
