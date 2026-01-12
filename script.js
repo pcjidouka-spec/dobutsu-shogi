@@ -179,7 +179,7 @@ class DobutsuShogi {
         const moves = [];
         const originalPlayer = this.currentPlayer;
         this.currentPlayer = player;
-        
+
         // 盤上の駒の移動
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 3; col++) {
@@ -197,7 +197,7 @@ class DobutsuShogi {
         const captured = this.captured[player];
         const uniquePieces = [...new Set(captured)];
         const validPositions = this.getValidDropPositions();
-        
+
         for (const pieceType of uniquePieces) {
             // にわとりを打つ場合はひよことして打つ
             const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
@@ -241,7 +241,7 @@ class DobutsuShogi {
             // にわとりを打つ場合はひよことして打つ
             const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
             this.board[row][col] = { type: actualPieceType, player: this.currentPlayer };
-            
+
             // 持ち駒から削除（niwatoriの場合はhiyokoとして削除）
             const index = this.captured[this.currentPlayer].indexOf(actualPieceType);
             if (index > -1) {
@@ -250,7 +250,7 @@ class DobutsuShogi {
         }
 
         this.switchPlayer();
-        
+
         // 千日手判定用に状態を記録（手番交代後の状態）
         const positionKey = this.getPositionKey();
         this.positionHistory.push(positionKey);
@@ -414,7 +414,7 @@ class OnlineGameUI {
             fromRow, fromCol, toRow, toCol,
             player: currentPlayer,
             captured: pieceAtDest ? pieceAtDest.type : null,
-            boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            boardState: this.game.board.map(row => row.map(cell => cell ? { ...cell } : null)),
             capturedState: {
                 sente: [...this.game.captured.sente],
                 gote: [...this.game.captured.gote]
@@ -451,7 +451,7 @@ class OnlineGameUI {
             type: 'drop',
             pieceType: actualPieceType, row, col,
             player: currentPlayer,
-            boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            boardState: this.game.board.map(row => row.map(cell => cell ? { ...cell } : null)),
             capturedState: {
                 sente: [...this.game.captured.sente],
                 gote: [...this.game.captured.gote]
@@ -496,7 +496,7 @@ class OnlineGameUI {
         const winnerText = data.winner === 'sente' ? '先手' : '後手';
         const youWon = data.winner === this.playerRole;
         const resultText = youWon ? '勝利！' : '敗北...';
-        
+
         this.messageElement.textContent = resultText;
         this.messageElement.style.color = youWon ? '#28a745' : '#dc3545';
 
@@ -526,8 +526,8 @@ class OnlineGameUI {
             this.announcementElement.style.textShadow = '0 0 20px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.6)';
         } else {
             this.announcementElement.style.color = isWin ? '#28a745' : '#dc3545';
-            this.announcementElement.style.textShadow = isWin 
-                ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)' 
+            this.announcementElement.style.textShadow = isWin
+                ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)'
                 : '0 0 20px rgba(220, 53, 69, 0.8), 0 0 40px rgba(220, 53, 69, 0.6)';
         }
         this.announcementElement.classList.add('show', 'game-over');
@@ -590,7 +590,7 @@ class OnlineGameUI {
             for (let col = 0; col < 3; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                
+
                 // 後手プレイヤーの場合、表示上の座標を反転
                 let displayRow = row;
                 let displayCol = col;
@@ -598,7 +598,7 @@ class OnlineGameUI {
                     displayRow = 3 - row;
                     displayCol = 2 - col;
                 }
-                
+
                 cell.dataset.row = displayRow;
                 cell.dataset.col = displayCol;
                 cell.dataset.serverRow = row; // サーバー座標も保存
@@ -975,14 +975,14 @@ class OnlineGameUI {
         }
 
         // 手を打つ前の状態を復元
-        const newBoard = move.boardState.map(row => 
-            row.map(cell => cell ? {...cell} : null)
+        const newBoard = move.boardState.map(row =>
+            row.map(cell => cell ? { ...cell } : null)
         );
         const newCaptured = {
             sente: [...move.capturedState.sente],
             gote: [...move.capturedState.gote]
         };
-        
+
         // 盤面と持ち駒を直接置き換え
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 3; col++) {
@@ -998,11 +998,11 @@ class OnlineGameUI {
             if (move.type === 'move') {
                 const { fromRow, fromCol, toRow, toCol } = move;
                 const piece = this.game.board[fromRow][fromCol];
-                
+
                 if (!piece) {
                     return;
                 }
-                
+
                 const captured = this.game.board[toRow][toCol];
 
                 // 駒を取った場合
@@ -1015,7 +1015,7 @@ class OnlineGameUI {
                 }
 
                 // 駒を移動
-                this.game.board[toRow][toCol] = {...piece};
+                this.game.board[toRow][toCol] = { ...piece };
                 this.game.board[fromRow][fromCol] = null;
 
                 // ひよこの成り判定
@@ -1032,7 +1032,7 @@ class OnlineGameUI {
                 // にわとりを打つ場合はひよことして打つ
                 const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
                 this.game.board[row][col] = { type: actualPieceType, player: this.game.currentPlayer };
-                
+
                 const index = this.game.captured[this.game.currentPlayer].indexOf(actualPieceType);
                 if (index > -1) {
                     this.game.captured[this.game.currentPlayer].splice(index, 1);
@@ -1070,7 +1070,7 @@ class OnlineGameUI {
     // 棋譜の折りたたみ/展開
     toggleRecord() {
         if (!this.recordContent) return;
-        
+
         this.recordCollapsed = !this.recordCollapsed;
         this.recordContent.style.display = this.recordCollapsed ? 'none' : 'block';
         if (this.recordToggleBtn) {
@@ -1098,31 +1098,31 @@ class OnlineGameUI {
             'lion': 'ライオン', 'zou': 'ぞう', 'kirin': 'きりん',
             'hiyoko': 'ひよこ', 'niwatori': 'にわとり'
         };
-        
+
         const playerSymbol = move.player === 'sente' ? '▲' : '△';
         const playerLabel = move.player === 'sente' ? '(先手)' : '(後手)';
 
         if (move.type === 'move') {
             const piece = move.boardState[move.fromRow][move.fromCol];
             if (!piece) return '';
-            
+
             const pieceName = pieceNames[piece.type] || piece.type;
             const toSuji = 3 - move.toCol;
             const toDan = move.toRow + 1;
-            
+
             let text = `${playerSymbol}${playerLabel}${pieceName}${toSuji}${toDan}`;
-            
+
             if (move.captured) {
                 text = text.replace(/(\d+)$/, '×$1');
             }
-            
+
             if (piece.type === 'hiyoko') {
                 const promotionRow = piece.player === 'sente' ? 0 : 3;
                 if (move.toRow === promotionRow) {
                     text = text.replace(/(ひよこ)([×\d]+)$/, '$1ニ$2');
                 }
             }
-            
+
             return text;
         } else if (move.type === 'drop') {
             const pieceName = pieceNames[move.pieceType] || move.pieceType;
@@ -1142,7 +1142,7 @@ class OnlineGameUI {
         this.canPlay = false;
         this.moveHistory = [];
         this.isReviewMode = false;
-        
+
         this.announcementElement.classList.remove('show', 'game-over');
         this.render();
         this.showGameStartAnnouncement();
@@ -1162,7 +1162,7 @@ class AIGameUI {
         this.currentReviewMove = 0; // 感想戦モードの現在の手
         this.isReviewMode = false; // 感想戦モードかどうか
         this.maxThinkingTime = 5000; // 最大考慮時間（ミリ秒）
-        
+
         // AIパラメータを設定（カスタムパラメータがあれば使用、なければデフォルト）
         const defaultParams = this.getDefaultAIParams();
         this.aiParams = {};
@@ -1223,7 +1223,7 @@ class AIGameUI {
         this.welcomeScreen.style.display = 'none';
         this.gameContainer.style.display = 'block';
         this.playerNameElement.textContent = '先手：あなた';
-        
+
         // AIタイプに応じた名前を表示
         const aiNames = this.getAIName(this.aiType);
         this.opponentNameElement.textContent = `後手：${aiNames}`;
@@ -1268,7 +1268,7 @@ class AIGameUI {
             console.error('boardElement is null');
             return;
         }
-        
+
         this.boardElement.innerHTML = '';
         this.boardElement.classList.remove('flipped');
 
@@ -1298,7 +1298,7 @@ class AIGameUI {
             console.error('Captured elements are null');
             return;
         }
-        
+
         this.playerCapturedElement.innerHTML = '';
         this.opponentCapturedElement.innerHTML = '';
 
@@ -1380,13 +1380,13 @@ class AIGameUI {
         // 手の履歴に追加（評価も含める）
         const gameCopyBefore = this.createGameCopy();
         const evaluationBefore = this.evaluatePosition(gameCopyBefore, 'gote');
-        
+
         const moveData = {
             type: 'move',
             fromRow, fromCol, toRow, toCol,
             player: this.game.currentPlayer,
             captured: captured ? captured.type : null,
-            boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            boardState: this.game.board.map(row => row.map(cell => cell ? { ...cell } : null)),
             capturedState: {
                 sente: [...this.game.captured.sente],
                 gote: [...this.game.captured.gote]
@@ -1415,7 +1415,7 @@ class AIGameUI {
 
         // 手番交代
         this.game.switchPlayer();
-        
+
         // 千日手判定用に状態を記録（手番交代後の状態）
         const positionKey = this.game.getPositionKey();
         this.game.positionHistory.push(positionKey);
@@ -1432,7 +1432,7 @@ class AIGameUI {
         }
         this.isMyTurn = false;
         this.render();
-        
+
         setTimeout(() => {
             this.makeAIMove();
         }, 500);
@@ -1441,16 +1441,16 @@ class AIGameUI {
     executeDrop(pieceType, row, col) {
         // にわとりを打つ場合はひよことして打つ
         const actualPieceType = pieceType === 'niwatori' ? 'hiyoko' : pieceType;
-        
+
         // 手の履歴に追加（評価も含める）
         const gameCopyBefore = this.createGameCopy();
         const evaluationBefore = this.evaluatePosition(gameCopyBefore, 'gote');
-        
+
         const moveData = {
             type: 'drop',
             pieceType: actualPieceType, row, col,
             player: this.game.currentPlayer,
-            boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            boardState: this.game.board.map(row => row.map(cell => cell ? { ...cell } : null)),
             capturedState: {
                 sente: [...this.game.captured.sente],
                 gote: [...this.game.captured.gote]
@@ -1460,7 +1460,7 @@ class AIGameUI {
         this.moveHistory.push(moveData);
 
         this.game.board[row][col] = { type: actualPieceType, player: this.game.currentPlayer };
-        
+
         // 持ち駒から削除（niwatoriの場合はhiyokoとして削除）
         const index = this.game.captured[this.game.currentPlayer].indexOf(actualPieceType);
         if (index > -1) {
@@ -1469,7 +1469,7 @@ class AIGameUI {
 
         // 手番交代
         this.game.switchPlayer();
-        
+
         // 千日手判定用に状態を記録（手番交代後の状態）
         const positionKey = this.game.getPositionKey();
         this.game.positionHistory.push(positionKey);
@@ -1486,7 +1486,7 @@ class AIGameUI {
         }
         this.isMyTurn = false;
         this.render();
-        
+
         setTimeout(() => {
             this.makeAIMove();
         }, 500);
@@ -1501,10 +1501,10 @@ class AIGameUI {
 
         // AIの手を選択（より良い手を選ぶ）
         const bestMove = this.selectBestMove(possibleMoves);
-        
+
         // ゲーム状態を保存
         const gameCopy = JSON.parse(JSON.stringify({
-            board: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            board: this.game.board.map(row => row.map(cell => cell ? { ...cell } : null)),
             captured: {
                 sente: [...this.game.captured.sente],
                 gote: [...this.game.captured.gote]
@@ -1517,7 +1517,7 @@ class AIGameUI {
             type: bestMove.type,
             ...bestMove,
             player: 'gote',
-            boardState: this.game.board.map(row => row.map(cell => cell ? {...cell} : null)),
+            boardState: this.game.board.map(row => row.map(cell => cell ? { ...cell } : null)),
             capturedState: {
                 sente: [...this.game.captured.sente],
                 gote: [...this.game.captured.gote]
@@ -1541,7 +1541,7 @@ class AIGameUI {
     // AIタイプに応じた名前を取得
     getAIName(aiType) {
         const params = this.aiParams[aiType] || this.getDefaultAIParams()[aiType];
-        
+
         switch (aiType) {
             case 'minimax':
                 const depth = params?.depth || 3;
@@ -1553,7 +1553,7 @@ class AIGameUI {
                 const pieceValues = params?.pieceValues;
                 if (pieceValues) {
                     // 最も高い価値の駒を特定
-                    const maxPiece = Object.entries(pieceValues).reduce((a, b) => 
+                    const maxPiece = Object.entries(pieceValues).reduce((a, b) =>
                         pieceValues[a[0]] > pieceValues[b[0]] ? a : b
                     );
                     const pieceNames = {
@@ -1579,7 +1579,7 @@ class AIGameUI {
         return {
             'minimax': { depth: 3 },
             'montecarlo': { simulations: 1000 },
-            'evaluation': { 
+            'evaluation': {
                 pieceValues: {
                     lion: 1000,
                     niwatori: 600,
@@ -1608,7 +1608,7 @@ class AIGameUI {
 
     selectBestMove(moves) {
         const params = this.aiParams[this.aiType] || this.getDefaultAIParams()[this.aiType];
-        
+
         switch (this.aiType) {
             case 'minimax':
                 return this.selectMoveWithMinimaxTimeLimited(moves, params.depth);
@@ -1625,7 +1625,7 @@ class AIGameUI {
     evaluatePosition(game, player) {
         let score = 0;
         const opponent = player === 'sente' ? 'gote' : 'sente';
-        
+
         // 駒の価値（カスタムパラメータがあれば使用、なければデフォルト）
         const defaultPieceValues = {
             lion: 1000,
@@ -1634,9 +1634,9 @@ class AIGameUI {
             kirin: 400,
             hiyoko: 100
         };
-        
-        const customPieceValues = this.aiParams[this.aiType]?.pieceValues || 
-                                 (this.aiType === 'evaluation' ? this.aiParams['evaluation']?.pieceValues : null);
+
+        const customPieceValues = this.aiParams[this.aiType]?.pieceValues ||
+            (this.aiType === 'evaluation' ? this.aiParams['evaluation']?.pieceValues : null);
         const pieceValues = customPieceValues || defaultPieceValues;
 
         // 盤上の駒を評価
@@ -1700,16 +1700,16 @@ class AIGameUI {
 
                 const gameCopy = this.createGameCopy();
                 gameCopy.currentPlayer = 'gote';
-                
+
                 gameCopy.makeMove(move);
                 const winner = gameCopy.checkWinCondition();
-                
+
                 if (winner === 'gote') {
                     return move; // 即座に勝利できる手
                 }
 
                 const value = this.minimaxTimeLimited(gameCopy, depth - 1, false, -Infinity, Infinity, startTime);
-                
+
                 if (value > bestValue) {
                     bestValue = value;
                     bestMove = move;
@@ -1760,7 +1760,7 @@ class AIGameUI {
             let maxEval = -Infinity;
             for (const move of possibleMoves) {
                 if (performance.now() - startTime > this.maxThinkingTime) break;
-                
+
                 const gameCopy = this.createGameCopyFromGame(game);
                 gameCopy.currentPlayer = player;
                 gameCopy.makeMove(move);
@@ -1774,7 +1774,7 @@ class AIGameUI {
             let minEval = Infinity;
             for (const move of possibleMoves) {
                 if (performance.now() - startTime > this.maxThinkingTime) break;
-                
+
                 const gameCopy = this.createGameCopyFromGame(game);
                 gameCopy.currentPlayer = player;
                 gameCopy.makeMove(move);
@@ -1801,17 +1801,17 @@ class AIGameUI {
         for (const move of moves) {
             const gameCopy = this.createGameCopy();
             gameCopy.currentPlayer = 'gote';
-            
+
             gameCopy.makeMove(move);
             const winner = gameCopy.checkWinCondition();
-            
+
             if (winner === 'gote') {
                 return move;
             }
 
             // 評価関数でスコアを計算
             const score = this.evaluatePosition(gameCopy, 'gote');
-            
+
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
@@ -1825,7 +1825,7 @@ class AIGameUI {
     selectMoveWithMonteCarlo(moves, simulations) {
         const startTime = performance.now();
         const moveStats = new Map();
-        
+
         // 各手に対して統計を初期化
         moves.forEach(move => {
             moveStats.set(move, { wins: 0, total: 0 });
@@ -1837,12 +1837,12 @@ class AIGameUI {
             // ランダムに手を選ぶ
             const move = moves[Math.floor(Math.random() * moves.length)];
             const stats = moveStats.get(move);
-            
+
             // プレイアウトを実行
             const result = this.playout(move);
             stats.total++;
             totalSimulations++;
-            
+
             if (result === 'gote') {
                 stats.wins++;
             }
@@ -1854,11 +1854,11 @@ class AIGameUI {
 
         moveStats.forEach((stats, move) => {
             if (stats.total === 0) return;
-            
+
             const winRate = stats.wins / stats.total;
             // 探索と活用のバランスを取る（簡易版）
             const score = winRate + Math.sqrt(2 * Math.log(totalSimulations) / stats.total);
-            
+
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
@@ -1885,7 +1885,7 @@ class AIGameUI {
 
             const currentPlayer = gameCopy.currentPlayer;
             const possibleMoves = gameCopy.getAllPossibleMoves(currentPlayer);
-            
+
             if (possibleMoves.length === 0) {
                 // 手がない場合は相手の勝ち
                 return currentPlayer === 'sente' ? 'gote' : 'sente';
@@ -1919,7 +1919,7 @@ class AIGameUI {
     // 上位N手をミニマックスで選ぶ（時間制限付き）
     getTopMovesWithMinimaxTimeLimited(moves, topN, depth, startTime) {
         const scoredMoves = [];
-        
+
         for (const move of moves) {
             if (performance.now() - startTime > this.maxThinkingTime * 0.7) {
                 // 時間がかかりすぎる場合は途中で終了
@@ -1940,8 +1940,8 @@ class AIGameUI {
     // ゲーム状態のコピーを作成
     createGameCopy() {
         const gameCopy = new DobutsuShogi();
-        gameCopy.board = this.game.board.map(row => 
-            row.map(cell => cell ? {...cell} : null)
+        gameCopy.board = this.game.board.map(row =>
+            row.map(cell => cell ? { ...cell } : null)
         );
         gameCopy.captured = {
             sente: [...this.game.captured.sente],
@@ -1954,8 +1954,8 @@ class AIGameUI {
     // 別のゲーム状態からコピーを作成
     createGameCopyFromGame(game) {
         const gameCopy = new DobutsuShogi();
-        gameCopy.board = game.board.map(row => 
-            row.map(cell => cell ? {...cell} : null)
+        gameCopy.board = game.board.map(row =>
+            row.map(cell => cell ? { ...cell } : null)
         );
         gameCopy.captured = {
             sente: [...game.captured.sente],
@@ -1970,7 +1970,7 @@ class AIGameUI {
         const opponent = player === 'sente' ? 'gote' : 'sente';
         const originalPlayer = this.game.currentPlayer;
         this.game.currentPlayer = opponent;
-        
+
         for (let r = 0; r < 4; r++) {
             for (let c = 0; c < 3; c++) {
                 const piece = this.game.board[r][c];
@@ -1983,7 +1983,7 @@ class AIGameUI {
                 }
             }
         }
-        
+
         this.game.currentPlayer = originalPlayer;
         return true;
     }
@@ -2061,7 +2061,7 @@ class AIGameUI {
 
         const youWon = winner === this.playerRole;
         const resultText = youWon ? '勝利！' : '敗北...';
-        
+
         this.messageElement.textContent = resultText;
         this.messageElement.style.color = youWon ? '#28a745' : '#dc3545';
         this.canPlay = false;
@@ -2306,7 +2306,7 @@ class AIGameUI {
         const evaluation = this.evaluatePosition(this.game, this.game.currentPlayer === 'sente' ? 'gote' : 'sente');
         this.evalValue.textContent = evaluation > 0 ? `+${evaluation}` : evaluation;
         this.positionEvaluation.style.display = 'flex';
-        
+
         // 評価に応じて色を変更（AI視点なので、正の値はAI優勢、負の値はプレイヤー優勢）
         if (evaluation > 500) {
             this.evalValue.style.color = '#28a745'; // 緑（AI優勢）
@@ -2326,7 +2326,7 @@ class AIGameUI {
 
         const params = this.aiParams[this.aiType] || this.getDefaultAIParams()[this.aiType];
         let methodText = '';
-        
+
         switch (this.aiType) {
             case 'minimax':
                 const depth = params?.depth || 3;
@@ -2342,7 +2342,7 @@ class AIGameUI {
             default:
                 methodText = '評価関数で評価';
         }
-        
+
         this.evalMethodInfo.textContent = methodText;
     }
 
@@ -2352,7 +2352,7 @@ class AIGameUI {
         if (this.isReviewMode) {
             return;
         }
-        
+
         if (!this.showEvaluation || !this.gameRecord || !this.recordList) {
             if (this.gameRecord) {
                 this.gameRecord.style.display = 'none';
@@ -2416,7 +2416,7 @@ class AIGameUI {
             'lion': 'ライオン', 'zou': 'ぞう', 'kirin': 'きりん',
             'hiyoko': 'ひよこ', 'niwatori': 'にわとり'
         };
-        
+
         // ▲は先手（sente）、△は後手（gote）
         const playerSymbol = move.player === 'sente' ? '▲' : '△';
         const playerLabel = move.player === 'sente' ? '(先手)' : '(後手)';
@@ -2424,22 +2424,22 @@ class AIGameUI {
         if (move.type === 'move') {
             const piece = move.boardState[move.fromRow][move.fromCol];
             if (!piece) return '';
-            
+
             const pieceName = pieceNames[piece.type] || piece.type;
-            
+
             // 座標変換: 筋（列）は右から1,2,3、段（行）は後手側から1,2,3,4
             // col: 0,1,2（左から右） → 筋: 3,2,1（右から左）
             // row: 0,1,2,3（後手側から先手側） → 段: 1,2,3,4（後手側から）
             const toSuji = 3 - move.toCol;  // 行き先の筋（右から）
             const toDan = move.toRow + 1;   // 行き先の段（後手側から）
-            
+
             let text = `${playerSymbol}${playerLabel}${pieceName}${toSuji}${toDan}`;
-            
+
             // 取りの場合は×を追加（座標の前に×）
             if (move.captured) {
                 text = text.replace(/(\d+)$/, '×$1');
             }
-            
+
             // 成りの判定（ひよこが相手陣地に入った場合）
             if (piece.type === 'hiyoko') {
                 const promotionRow = piece.player === 'sente' ? 0 : 3;
@@ -2448,15 +2448,15 @@ class AIGameUI {
                     text = text.replace(/(ひよこ)([×\d]+)$/, '$1ニ$2');
                 }
             }
-            
+
             return text;
         } else if (move.type === 'drop') {
             const pieceName = pieceNames[move.pieceType] || move.pieceType;
-            
+
             // 座標変換
             const suji = 3 - move.col;  // 筋（右から）
             const dan = move.row + 1;   // 段（後手側から）
-            
+
             return `${playerSymbol}${playerLabel}${pieceName}打${suji}${dan}`;
         }
         return '';
@@ -2465,8 +2465,8 @@ class AIGameUI {
     // 手の状態からゲームコピーを作成
     createGameCopyFromMove(move) {
         const gameCopy = new DobutsuShogi();
-        gameCopy.board = move.boardState.map(row => 
-            row.map(cell => cell ? {...cell} : null)
+        gameCopy.board = move.boardState.map(row =>
+            row.map(cell => cell ? { ...cell } : null)
         );
         gameCopy.captured = {
             sente: [...move.capturedState.sente],
@@ -2484,12 +2484,12 @@ class AIGameUI {
             this.announcementElement.style.textShadow = '0 0 20px rgba(102, 126, 234, 0.8), 0 0 40px rgba(102, 126, 234, 0.6)';
         } else {
             this.announcementElement.style.color = isWin ? '#28a745' : '#dc3545';
-            this.announcementElement.style.textShadow = isWin 
-                ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)' 
+            this.announcementElement.style.textShadow = isWin
+                ? '0 0 20px rgba(40, 167, 69, 0.8), 0 0 40px rgba(40, 167, 69, 0.6)'
                 : '0 0 20px rgba(220, 53, 69, 0.8), 0 0 40px rgba(220, 53, 69, 0.6)';
         }
         this.announcementElement.classList.add('show', 'game-over');
-        
+
         // 2秒後に再戦確認を表示（感想戦モードへのボタンも追加）
         setTimeout(() => {
             this.showRematchConfirmation();
@@ -2541,15 +2541,15 @@ class AIGameUI {
         this.isMyTurn = true;
         this.canPlay = false;
         this.moveHistory = []; // 手の履歴もリセット
-        
+
         // アナウンスを非表示
         this.announcementElement.classList.remove('show', 'game-over');
-        
+
         // プレイヤー名を更新（AIタイプに応じた名前を再設定）
         this.playerNameElement.textContent = '先手：あなた';
         const aiName = this.getAIName(this.aiType);
         this.opponentNameElement.textContent = `後手：${aiName}`;
-        
+
         this.render();
         this.showGameStartAnnouncement();
     }
@@ -2582,14 +2582,14 @@ class AIGameUI {
         }
 
         // 手を打つ前の状態を復元（深いコピーを作成）
-        const newBoard = move.boardState.map(row => 
-            row.map(cell => cell ? {...cell} : null)
+        const newBoard = move.boardState.map(row =>
+            row.map(cell => cell ? { ...cell } : null)
         );
         const newCaptured = {
             sente: [...move.capturedState.sente],
             gote: [...move.capturedState.gote]
         };
-        
+
         // 盤面と持ち駒を直接置き換え
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 3; col++) {
@@ -2606,12 +2606,12 @@ class AIGameUI {
                 // 移動手の場合
                 const { fromRow, fromCol, toRow, toCol } = move;
                 const piece = this.game.board[fromRow][fromCol];
-                
+
                 if (!piece) {
                     console.warn('Piece not found at:', fromRow, fromCol, 'move:', move);
                     return;
                 }
-                
+
                 const captured = this.game.board[toRow][toCol];
 
                 // 駒を取った場合
@@ -2624,7 +2624,7 @@ class AIGameUI {
                 }
 
                 // 駒を移動
-                this.game.board[toRow][toCol] = {...piece};
+                this.game.board[toRow][toCol] = { ...piece };
                 this.game.board[fromRow][fromCol] = null;
 
                 // ひよこの成り判定
@@ -2641,7 +2641,7 @@ class AIGameUI {
                 // 打ち手の場合
                 const { pieceType, row, col } = move;
                 this.game.board[row][col] = { type: pieceType, player: this.game.currentPlayer };
-                
+
                 // 持ち駒から削除
                 const index = this.game.captured[this.game.currentPlayer].indexOf(pieceType);
                 if (index > -1) {
@@ -2708,23 +2708,48 @@ class AIGameUI {
     }
 }
 
+// 開発者モードUI管理
+class DeveloperModeUI {
+    constructor() {
+        this.dbConsoleBtn = document.getElementById('db-console-btn');
+        this.serverStatusBtn = document.getElementById('server-status-btn');
+
+        if (this.dbConsoleBtn) {
+            this.dbConsoleBtn.addEventListener('click', () => {
+                window.open('developmode/console.html', '_blank');
+            });
+        }
+
+        if (this.serverStatusBtn) {
+            this.serverStatusBtn.addEventListener('click', () => {
+                alert('サーバー管理機能は開発中地です。');
+            });
+        }
+    }
+}
+
 // ゲームモード管理
 class GameModeManager {
     constructor() {
         this.modeSelection = document.getElementById('mode-selection');
         this.aiSelection = document.getElementById('ai-selection');
+        this.devSelection = document.getElementById('dev-selection');
         this.onlineModeBtn = document.getElementById('online-mode-btn');
         this.aiModeBtn = document.getElementById('ai-mode-btn');
+        this.devModeBtn = document.getElementById('dev-mode-btn');
         this.aiBackBtn = document.getElementById('ai-back-btn');
+        this.devBackBtn = document.getElementById('dev-back-btn');
         this.waitingMessage = document.getElementById('waiting-message');
 
         this.onlineModeBtn.addEventListener('click', () => this.startOnlineMode());
         this.aiModeBtn.addEventListener('click', () => this.showAISelection());
+        this.devModeBtn.addEventListener('click', () => this.showDevSelection());
         this.aiBackBtn.addEventListener('click', () => this.hideAISelection());
-        
+        this.devBackBtn.addEventListener('click', () => this.hideDevSelection());
+
         // パラメータ入力フィールドのイベントリスナー
         this.setupParamInputs();
-        
+
         // AI選択ボタンにイベントリスナーを追加
         const aiOptionButtons = document.querySelectorAll('.ai-option-btn');
         aiOptionButtons.forEach(btn => {
@@ -2743,7 +2768,7 @@ class GameModeManager {
                 const value = parseInt(e.target.value);
                 const min = parseInt(e.target.min);
                 const max = parseInt(e.target.max);
-                
+
                 if (value < min) {
                     e.target.value = min;
                 } else if (value > max) {
@@ -2754,7 +2779,7 @@ class GameModeManager {
 
         // スライダーのリアルタイム更新
         this.setupSliders();
-        
+
         // 駒の価値スライダーのリアルタイム更新
         this.setupPieceValueSliders();
 
@@ -2765,7 +2790,7 @@ class GameModeManager {
                 const aiType = e.target.closest('.param-toggle-btn').dataset.aiType;
                 const paramsDiv = document.querySelector(`.ai-params-inline[data-ai-type="${aiType}"]`);
                 const toggleBtn = e.target.closest('.param-toggle-btn');
-                
+
                 if (paramsDiv) {
                     const isVisible = paramsDiv.style.display !== 'none';
                     paramsDiv.style.display = isVisible ? 'none' : 'block';
@@ -2800,14 +2825,14 @@ class GameModeManager {
         const minimaxDepth = document.getElementById('minimax-depth');
         const minimaxDepthDisplay = document.getElementById('minimax-depth-display');
         const minimaxDesc = document.getElementById('minimax-desc');
-        
+
         if (minimaxDepth && minimaxDepthDisplay) {
             const initialValue = parseInt(minimaxDepth.value);
             minimaxDepthDisplay.textContent = initialValue;
             if (minimaxDesc) {
                 minimaxDesc.textContent = `探索深さ: ${initialValue}手（1手だと目の前の駒を取るだけですが、10手を超えると人間でも勝つのが難しくなります）`;
             }
-            
+
             minimaxDepth.addEventListener('input', (e) => {
                 const value = parseInt(e.target.value);
                 minimaxDepthDisplay.textContent = value;
@@ -2821,14 +2846,14 @@ class GameModeManager {
         const montecarloSim = document.getElementById('montecarlo-simulations');
         const montecarloSimDisplay = document.getElementById('montecarlo-simulations-display');
         const montecarloDesc = document.getElementById('montecarlo-desc');
-        
+
         if (montecarloSim && montecarloSimDisplay) {
             const initialValue = parseInt(montecarloSim.value);
             montecarloSimDisplay.textContent = initialValue.toLocaleString();
             if (montecarloDesc) {
                 montecarloDesc.textContent = `プレイアウト回数: ${initialValue.toLocaleString()}回（回数が少ないと「うっかりミス」が増え、多いと非常に堅実な指し回しになります）`;
             }
-            
+
             montecarloSim.addEventListener('input', (e) => {
                 const value = parseInt(e.target.value);
                 montecarloSimDisplay.textContent = value.toLocaleString();
@@ -2841,18 +2866,18 @@ class GameModeManager {
 
     setupPieceValueSliders() {
         const pieces = ['lion', 'niwatori', 'kirin', 'zou', 'hiyoko'];
-        
+
         pieces.forEach(piece => {
             const sliderId = `eval-${piece}-value`;
             const displayId = `eval-${piece}-display`;
             const slider = document.getElementById(sliderId);
             const display = document.getElementById(displayId);
-            
+
             if (slider && display) {
                 // 初期値を表示
                 const initialValue = parseInt(slider.value);
                 display.textContent = initialValue;
-                
+
                 // 変更時のイベントリスナー
                 slider.addEventListener('input', (e) => {
                     const value = parseInt(e.target.value);
@@ -2935,10 +2960,29 @@ class GameModeManager {
         this.modeSelection.style.display = 'block';
     }
 
+    showDevSelection() {
+        if (!this.devSelection) {
+            console.error('devSelection element not found');
+            return;
+        }
+        this.modeSelection.style.display = 'none';
+        this.devSelection.style.display = 'block';
+
+        // 開発者モード用UIクラスの初期化
+        if (!this.devUI) {
+            this.devUI = new DeveloperModeUI();
+        }
+    }
+
+    hideDevSelection() {
+        this.devSelection.style.display = 'none';
+        this.modeSelection.style.display = 'block';
+    }
+
     startAIMode(aiType) {
         this.aiSelection.style.display = 'none';
         this.waitingMessage.textContent = '';
-        
+
         // パラメータを取得
         const params = this.getAIParams(aiType);
         new AIGameUI(aiType, params);
@@ -2956,13 +3000,13 @@ class GameModeManager {
         };
 
         const params = {
-            'minimax': { 
+            'minimax': {
                 depth: parseInt(document.getElementById('minimax-depth')?.value || 3)
             },
-            'montecarlo': { 
+            'montecarlo': {
                 simulations: parseInt(document.getElementById('montecarlo-simulations')?.value || 1000)
             },
-            'evaluation': { 
+            'evaluation': {
                 pieceValues: getPieceValues()
             }
         };

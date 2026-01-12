@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "maintenanceMode": false,
+    "maxPlayersPerRoom": 4
+  },
+  "logs": [
+    {
+      "event": "test",
+      "time": "2026-01-12T09:00:35.984Z"
+    }
+  ]
+}

@@ -1,16 +1,224 @@
 const express = require('express');
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
+require('dotenv').config();
+const mysql = require('mysql2/promise');
 
 const app = express();
+app.use(express.json()); // JSONボディを解析するために必要
+app.use(express.static(__dirname)); // 静的ファイルの配信
 const PORT = process.env.PORT || 3000;
 
-// 静的ファイルを提供
-app.use(express.static(__dirname));
+// MySQL Connection Pool
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+// Initialize Database Tables
+async function initDB() {
+    try {
+        const connection = await pool.getConnection();
+        console.log('Connected to MySQL database');
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS game_settings (
+                setting_key VARCHAR(255) PRIMARY KEY,
+                setting_value TEXT
+            )
+        `);
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS game_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                event_type VARCHAR(255),
+                event_data TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                rating INT DEFAULT 1500,
+                wins INT DEFAULT 0,
+                losses INT DEFAULT 0,
+                draws INT DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Insert default settings if not exists
+        const [rows] = await connection.query('SELECT * FROM game_settings WHERE setting_key = ?', ['maxPlayersPerRoom']);
+        if (rows.length === 0) {
+            await connection.query('INSERT INTO game_settings (setting_key, setting_value) VALUES (?, ?)', ['maxPlayersPerRoom', '2']);
+        }
+
+        connection.release();
+    } catch (error) {
+        console.error('Error initializing database:', error.message);
+    }
+}
+
+initDB();
 
 const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// --- Developer Mode API (MySQL Version) ---
+
+// Auth Middleware
+const requireAuth = (req, res, next) => {
+    const password = req.headers['x-dev-password'];
+    if (password === process.env.DEV_PASSWORD) {
+        next();
+    } else {
+        res.status(401).json({ error: 'Unauthorized: Incorrect password' });
+    }
+};
+
+// Password Verify Endpoint
+app.post('/api/verify-password', (req, res) => {
+    const { password } = req.body;
+    if (password === process.env.DEV_PASSWORD) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, error: 'Incorrect password' });
+    }
+});
+
+
+// データベース取得 (設定とログを表示)
+app.get('/api/db', requireAuth, async (req, res) => {
+    try {
+        const [settings] = await pool.query('SELECT * FROM game_settings');
+        const [logs] = await pool.query('SELECT * FROM game_logs ORDER BY created_at DESC LIMIT 50');
+
+        const dbData = {
+            settings: settings.reduce((acc, row) => {
+                acc[row.setting_key] = row.setting_value;
+                return acc;
+            }, {}),
+            logs: logs
+        };
+        res.json(dbData);
+    } catch (error) {
+        res.status(500).send('Database error: ' + error.message);
+    }
+});
+
+// データベース更新 (設定のみ更新可能)
+app.post('/api/db', requireAuth, async (req, res) => {
+    try {
+        const { settings } = req.body;
+        if (settings) {
+            for (const [key, value] of Object.entries(settings)) {
+                await pool.query(
+                    'INSERT INTO game_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
+                    [key, String(value), String(value)]
+                );
+            }
+            res.send('Settings updated');
+        } else {
+            res.status(400).send('No settings provided');
+        }
+    } catch (error) {
+        res.status(500).send('Database error: ' + error.message);
+    }
+});
+
+// 任意のSQL実行 (開発者用)
+app.post('/api/sql', requireAuth, async (req, res) => {
+    try {
+        const { query } = req.body;
+        if (!query) return res.status(400).send('Query is required');
+
+        const [rows, fields] = await pool.query(query);
+        res.json({ rows, fields });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- User Management API ---
+
+// 全ユーザー取得
+app.get('/api/users', requireAuth, async (req, res) => {
+    try {
+        const [users] = await pool.query('SELECT * FROM users ORDER BY rating DESC');
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ユーザー作成
+app.post('/api/users', requireAuth, async (req, res) => {
+    try {
+        const { username, rating } = req.body;
+        if (!username) return res.status(400).json({ error: 'Username is required' });
+
+        await pool.query(
+            'INSERT INTO users (username, rating) VALUES (?, ?)',
+            [username, rating || 1500]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            res.status(400).json({ error: 'Username already exists' });
+        } else {
+            res.status(500).json({ error: error.message });
+        }
+    }
+});
+
+// ユーザー更新
+app.put('/api/users/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { rating, wins, losses, draws, created_at } = req.body;
+
+        await pool.query(
+            'UPDATE users SET rating=?, wins=?, losses=?, draws=?, created_at=? WHERE id=?',
+            [rating, wins, losses, draws, created_at, id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ユーザー削除
+app.delete('/api/users/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM users WHERE id=?', [id]);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// サーバーステータス取得
+app.get('/api/status', requireAuth, (req, res) => {
+    const status = {
+        activeRooms: rooms.size,
+        waitingPlayers: waitingPlayers.length,
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage()
+    };
+    res.json(status);
+});
+// --------------------------
 
 // WebSocketサーバー
 const wss = new WebSocket.Server({ server });
@@ -338,7 +546,7 @@ function getPositionKey(board, captured, currentPlayer) {
 // 特定のプレイヤーの可能な手を取得
 function getAllPossibleMoves(board, captured, player) {
     const moves = [];
-    
+
     // 盤上の駒の移動
     for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 3; col++) {
@@ -358,7 +566,7 @@ function getAllPossibleMoves(board, captured, player) {
             }
         }
     }
-    
+
     // 持ち駒の打ち（簡易版：空いているマスに打てる）
     const uniquePieces = [...new Set(captured[player] || [])];
     for (const pieceType of uniquePieces) {
@@ -372,7 +580,7 @@ function getAllPossibleMoves(board, captured, player) {
             }
         }
     }
-    
+
     return moves;
 }
 
@@ -462,7 +670,7 @@ function handleRematch(ws) {
     if (!room) return;
 
     const playerRole = getPlayerRole(ws, room);
-    
+
     // 再戦リクエストを記録
     if (!rematchRequests.has(room.id)) {
         rematchRequests.set(room.id, new Set());
@@ -476,7 +684,7 @@ function handleRematch(ws) {
         room.board = initializeBoard();
         room.captured = { sente: [], gote: [] };
         room.positionHistory = []; // 千日手判定用の状態履歴をリセット
-        
+
         // 先手・後手を入れ替える
         const temp = room.players.sente;
         room.players.sente = room.players.gote;
@@ -489,7 +697,7 @@ function handleRematch(ws) {
         // 両プレイヤーに再戦開始を通知（正しい役割を送信）
         const senteWs = room.players.sente;
         const goteWs = room.players.gote;
-        
+
         if (senteWs && senteWs.readyState === WebSocket.OPEN) {
             senteWs.send(JSON.stringify({
                 type: 'rematchAccepted',
@@ -497,7 +705,7 @@ function handleRematch(ws) {
                 opponent: goteWs.playerName
             }));
         }
-        
+
         if (goteWs && goteWs.readyState === WebSocket.OPEN) {
             goteWs.send(JSON.stringify({
                 type: 'rematchAccepted',

@@ -1496,7 +1496,48 @@ h1 {
 
     .param-toggle-btn {
         width: 100%;
-    }
+    }/* 開発者モードUI */
+.dev-selection {
+    margin-top: 40px;
+    width: 100%;
+}
+
+.dev-selection-title {
+    font-size: 2em;
+    color: #764ba2;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.dev-options {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.dev-option-btn {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border: none;
+    padding: 20px 30px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-weight: bold;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.dev-option-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.dev-option-btn:active {
+    transform: translateY(-1px);
+}
 
     .param-input {
         width: 50px;

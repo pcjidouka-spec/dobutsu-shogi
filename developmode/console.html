@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management Console</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        h1,
+        h2 {
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: none;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            color: white;
+            background-color: #3498db;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-green {
+            background-color: #27ae60;
+        }
+
+        .btn-green:hover {
+            background-color: #219150;
+        }
+
+        .btn-red {
+            background-color: #e74c3c;
+        }
+
+        .btn-red:hover {
+            background-color: #c0392b;
+        }
+
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            width: 300px;
+        }
+
+        .login-box input {
+            width: 100%;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+
+        .status-msg {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status-msg.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-msg.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2>Developer Login</h2>
+            <input type="password" id="dev-password" placeholder="Enter Developer Password">
+            <button class="btn btn-green" onclick="attemptLogin()">Login</button>
+        </div>
+    </div>
+
+    <div class="container" id="main-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>User Management</h1>
+            <button class="btn" onclick="fetchUsers()">Refresh List</button>
+        </div>
+
+        <div id="status-msg" class="status-msg"></div>
+
+        <!-- Add User Form -->
+        <div class="card">
+            <h3>Add New User</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="new-username" placeholder="Username" style="flex: 1;">
+                <input type="number" id="new-rating" placeholder="Rating (Default: 1500)" style="width: 150px;">
+                <button onclick="addUser()" class="btn-green">Add User</button>
+            </div>
+        </div>
+
+        <!-- User List -->
+        <div class="card">
+            <h3>Registered Users</h3>
+            <div id="users-list">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = sessionStorage.getItem('devToken') || '';
+
+        // Check Login
+        if (authToken) {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            fetchUsers();
+        }
+
+        async function attemptLogin() {
+            const password = document.getElementById('dev-password').value;
+            try {
+                const res = await fetch('/api/verify-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    authToken = password;
+                    sessionStorage.setItem('devToken', password);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    fetchUsers();
+                } else {
+                    alert('Invalid Password');
+                }
+            } catch (e) {
+                alert('Login failed: ' + e);
+            }
+        }
+
+        async function apiFetch(url, options = {}) {
+            const headers = options.headers || {};
+            headers['x-dev-password'] = authToken;
+            headers['Content-Type'] = 'application/json';
+            options.headers = headers;
+
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                alert('Session expired');
+                sessionStorage.removeItem('devToken');
+                location.reload();
+                throw new Error('Unauthorized');
+            }
+            return res;
+        }
+
+        function showStatus(msg, isError = false) {
+            const el = document.getElementById('status-msg');
+            el.textContent = msg;
+            el.className = 'status-msg ' + (isError ? 'error' : 'success');
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        // --- User Operations ---
+
+        async function fetchUsers() {
+            try {
+                const response = await apiFetch('/api/users');
+                const users = await response.json();
+                renderUsersTable(users);
+            } catch (err) {
+                document.getElementById('users-list').innerHTML = '<p style="color:red">Failed to load users.</p>';
+            }
+        }
+
+        async function addUser() {
+            const username = document.getElementById('new-username').value;
+            const rating = document.getElementById('new-rating').value;
+
+            if (!username) {
+                alert('Username is required');
+                return;
+            }
+
+            try {
+                const response = await apiFetch('/api/users', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, rating })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus('User added successfully');
+                    document.getElementById('new-username').value = '';
+                    document.getElementById('new-rating').value = '';
+                    fetchUsers();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                showStatus('Failed to add user', true);
+            }
+        }
+
+        async function updateUser(id) {
+            const row = document.getElementById(`user-row-${id}`);
+            const inputs = row.querySelectorAll('input');
+            const data = {
+                rating: inputs[0].value,
+                wins: inputs[1].value,
+                losses: inputs[2].value,
+                draws: inputs[3].value,
+                created_at: new Date(inputs[4].value).toISOString()
+            };
+
+            try {
+                const response = await apiFetch(`/api/users/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    showStatus('User updated');
+                } else {
+                    alert('Update failed');
+                }
+            } catch (err) {
+                showStatus('Update failed', true);
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+
+            try {
+                const response = await apiFetch(`/api/users/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    showStatus('User deleted');
+                    fetchUsers();
+                } else {
+                    alert('Delete failed');
+                }
+            } catch (err) {
+                showStatus('Delete failed', true);
+            }
+        }
+
+        function toLocalDatetime(dt) {
+            if (!dt) return '';
+            const date = new Date(dt);
+            date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+            return date.toISOString().slice(0, 16);
+        }
+
+        function renderUsersTable(users) {
+            if (!users || users.length === 0) {
+                document.getElementById('users-list').innerHTML = '<p>No users registered yet.</p>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Rating</th>
+                            <th>Wins</th>
+                            <th>Losses</th>
+                            <th>Draws</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            users.forEach(user => {
+                const localDate = toLocalDatetime(user.created_at);
+
+                html += `
+                    <tr id="user-row-${user.id}">
+                        <td>${user.id}</td>
+                        <td><strong>${user.username}</strong></td>
+                        <td><input type="number" value="${user.rating}" style="width: 80px;"></td>
+                        <td><input type="number" value="${user.wins}" style="width: 60px;"></td>
+                        <td><input type="number" value="${user.losses}" style="width: 60px;"></td>
+                        <td><input type="number" value="${user.draws}" style="width: 60px;"></td>
+                        <td>
+                            <input type="datetime-local" value="${localDate}" style="width: 200px;">
+                        </td>
+                        <td>
+                            <button onclick="updateUser(${user.id})" class="btn-green">Save</button>
+                            <button onclick="deleteUser(${user.id})" class="btn-red">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('users-list').innerHTML = html;
+        }
+    </script>
+</body>
+
+</html>

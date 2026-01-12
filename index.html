@@ -13,11 +13,13 @@
         <div class="welcome-content">
             <h1 class="welcome-title">動物将棋 by 長舩</h1>
             <div class="howto-link-container">
-                <a href="https://shogibeya.michikusa.jp/howto_doubutu.html" target="_blank" rel="noopener noreferrer" class="howto-link">遊び方</a>
+                <a href="https://shogibeya.michikusa.jp/howto_doubutu.html" target="_blank" rel="noopener noreferrer"
+                    class="howto-link">遊び方</a>
             </div>
             <div class="mode-selection" id="mode-selection">
                 <button class="mode-btn" id="online-mode-btn">オンライン対戦</button>
                 <button class="mode-btn" id="ai-mode-btn">コンピューター対戦</button>
+                <button class="mode-btn" id="dev-mode-btn">開発者モード</button>
             </div>
             <div class="ai-selection" id="ai-selection" style="display: none;">
                 <h2 class="ai-selection-title">AIモードを選択してください</h2>
@@ -25,7 +27,8 @@
                     <div class="ai-option-row">
                         <button class="ai-option-btn" data-ai-type="minimax">
                             <div class="ai-name">ミニマックス探索</div>
-                            <div class="ai-description" id="minimax-desc">探索深さ: 3手（1手だと目の前の駒を取るだけですが、10手を超えると人間でも勝つのが難しくなります）</div>
+                            <div class="ai-description" id="minimax-desc">探索深さ:
+                                3手（1手だと目の前の駒を取るだけですが、10手を超えると人間でも勝つのが難しくなります）</div>
                         </button>
                         <div class="ai-option-controls">
                             <button class="param-toggle-btn" data-ai-type="minimax">
@@ -35,7 +38,8 @@
                             <div class="ai-params-inline" data-ai-type="minimax" style="display: none;">
                                 <div class="param-item">
                                     <div class="param-label">探索深さ (d):</div>
-                                    <input type="range" class="param-slider" id="minimax-depth" min="1" max="15" value="3" step="1">
+                                    <input type="range" class="param-slider" id="minimax-depth" min="1" max="15"
+                                        value="3" step="1">
                                     <span class="param-value-display" id="minimax-depth-display">3</span>
                                 </div>
                                 <div class="param-info-text">推奨範囲: 1 ～ 15手</div>
@@ -46,7 +50,8 @@
                     <div class="ai-option-row">
                         <button class="ai-option-btn" data-ai-type="montecarlo">
                             <div class="ai-name">モンテカルロ</div>
-                            <div class="ai-description" id="montecarlo-desc">プレイアウト回数: 1000回（回数が少ないと「うっかりミス」が増え、多いと非常に堅実な指し回しになります）</div>
+                            <div class="ai-description" id="montecarlo-desc">プレイアウト回数:
+                                1000回（回数が少ないと「うっかりミス」が増え、多いと非常に堅実な指し回しになります）</div>
                         </button>
                         <div class="ai-option-controls">
                             <button class="param-toggle-btn" data-ai-type="montecarlo">
@@ -56,7 +61,8 @@
                             <div class="ai-params-inline" data-ai-type="montecarlo" style="display: none;">
                                 <div class="param-item">
                                     <div class="param-label">プレイアウト回数 (N):</div>
-                                    <input type="range" class="param-slider" id="montecarlo-simulations" min="10" max="10000" value="1000" step="10">
+                                    <input type="range" class="param-slider" id="montecarlo-simulations" min="10"
+                                        max="10000" value="1000" step="10">
                                     <span class="param-value-display" id="montecarlo-simulations-display">1000</span>
                                 </div>
                                 <div class="param-info-text">推奨範囲: 10 ～ 10,000回</div>
@@ -67,7 +73,8 @@
                     <div class="ai-option-row">
                         <button class="ai-option-btn" data-ai-type="evaluation">
                             <div class="ai-name">評価関数</div>
-                            <div class="ai-description">駒の価値重みを調整（ライオンを極端に低くすると自殺願望のあるAIに、キリンを高くするとキリンを偏愛するAIになります）</div>
+                            <div class="ai-description">駒の価値重みを調整（ライオンを極端に低くすると自殺願望のあるAIに、キリンを高くするとキリンを偏愛するAIになります）
+                            </div>
                         </button>
                         <div class="ai-option-controls">
                             <button class="param-toggle-btn" data-ai-type="evaluation">
@@ -79,27 +86,32 @@
                                 <div class="piece-value-controls">
                                     <div class="piece-value-item">
                                         <label>ライオン:</label>
-                                        <input type="range" class="piece-value-slider" id="eval-lion-value" min="0" max="1000" value="1000" step="10">
+                                        <input type="range" class="piece-value-slider" id="eval-lion-value" min="0"
+                                            max="1000" value="1000" step="10">
                                         <span class="piece-value-display" id="eval-lion-display">1000</span>
                                     </div>
                                     <div class="piece-value-item">
                                         <label>にわとり:</label>
-                                        <input type="range" class="piece-value-slider" id="eval-niwatori-value" min="0" max="1000" value="600" step="10">
+                                        <input type="range" class="piece-value-slider" id="eval-niwatori-value" min="0"
+                                            max="1000" value="600" step="10">
                                         <span class="piece-value-display" id="eval-niwatori-display">600</span>
                                     </div>
                                     <div class="piece-value-item">
                                         <label>きりん:</label>
-                                        <input type="range" class="piece-value-slider" id="eval-kirin-value" min="0" max="1000" value="400" step="10">
+                                        <input type="range" class="piece-value-slider" id="eval-kirin-value" min="0"
+                                            max="1000" value="400" step="10">
                                         <span class="piece-value-display" id="eval-kirin-display">400</span>
                                     </div>
                                     <div class="piece-value-item">
                                         <label>ぞう:</label>
-                                        <input type="range" class="piece-value-slider" id="eval-zou-value" min="0" max="1000" value="400" step="10">
+                                        <input type="range" class="piece-value-slider" id="eval-zou-value" min="0"
+                                            max="1000" value="400" step="10">
                                         <span class="piece-value-display" id="eval-zou-display">400</span>
                                     </div>
                                     <div class="piece-value-item">
                                         <label>ひよこ:</label>
-                                        <input type="range" class="piece-value-slider" id="eval-hiyoko-value" min="0" max="1000" value="100" step="10">
+                                        <input type="range" class="piece-value-slider" id="eval-hiyoko-value" min="0"
+                                            max="1000" value="100" step="10">
                                         <span class="piece-value-display" id="eval-hiyoko-display">100</span>
                                     </div>
                                 </div>
@@ -121,26 +133,39 @@
                             <strong>実験①：おっちょこちょいな「食いしん坊AI」</strong>
                             <div class="example-detail">
                                 <div class="example-tip"><strong>設定のコツ：</strong> ミニマックス法の探索深さを「2〜3手」とあえて浅くします。</div>
-                                <div class="example-highlight"><strong>見どころ：</strong> 目の前の駒を食べることに夢中で、その後の大ピンチに気づかない「うっかり感」を楽しめます。</div>
+                                <div class="example-highlight"><strong>見どころ：</strong>
+                                    目の前の駒を食べることに夢中で、その後の大ピンチに気づかない「うっかり感」を楽しめます。</div>
                             </div>
                         </div>
                         <div class="example-item">
                             <strong>実験②：ひよこを神と崇める「偏愛AI」</strong>
                             <div class="example-detail">
-                                <div class="example-tip"><strong>設定のコツ：</strong> 評価関数の設定で、ひよこの価値を「10,000」などの異常な数値に書き換えます。</div>
-                                <div class="example-highlight"><strong>見どころ：</strong> 自分のライオンが危なくても、全力でひよこを守りに行くシュールな挙動が見られます。</div>
+                                <div class="example-tip"><strong>設定のコツ：</strong>
+                                    評価関数の設定で、ひよこの価値を「10,000」などの異常な数値に書き換えます。</div>
+                                <div class="example-highlight"><strong>見どころ：</strong>
+                                    自分のライオンが危なくても、全力でひよこを守りに行くシュールな挙動が見られます。</div>
                             </div>
                         </div>
                         <div class="example-item">
                             <strong>実験③：AIが「覚醒」する瞬間を観察する</strong>
                             <div class="example-detail">
-                                <div class="example-tip"><strong>設定のコツ：</strong> パラメータ（探索深さやシミュレーション回数）を1刻みで少しずつ増やしていきます。</div>
-                                <div class="example-highlight"><strong>見どころ：</strong> どの数値を超えると「急に隙がなくなるか」という、AIが知能を持つ境界線を探る実験です。</div>
+                                <div class="example-tip"><strong>設定のコツ：</strong>
+                                    パラメータ（探索深さやシミュレーション回数）を1刻みで少しずつ増やしていきます。</div>
+                                <div class="example-highlight"><strong>見どころ：</strong>
+                                    どの数値を超えると「急に隙がなくなるか」という、AIが知能を持つ境界線を探る実験です。</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <button class="ai-back-btn" id="ai-back-btn">戻る</button>
+            </div>
+            <div class="dev-selection" id="dev-selection" style="display: none;">
+                <h2 class="dev-selection-title">開発者モード</h2>
+                <div class="dev-options">
+                    <button class="dev-option-btn" id="db-console-btn">データベースコンソール</button>
+                    <button class="dev-option-btn" id="server-status-btn">サーバー管理</button>
+                </div>
+                <button class="ai-back-btn" id="dev-back-btn">戻る</button>
             </div>
             <p class="waiting-message" id="waiting-message"></p>
         </div>
