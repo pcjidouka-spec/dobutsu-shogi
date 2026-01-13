@@ -1130,7 +1130,7 @@ class OnlineGameUI {
         this.recordCollapsed = !this.recordCollapsed;
         this.recordContent.style.display = this.recordCollapsed ? 'none' : 'block';
         if (this.recordToggleBtn) {
-            this.recordToggleBtn.textContent = this.recordCollapsed ? '展開' : '畳む';
+            this.recordToggleBtn.textContent = this.recordCollapsed ? '展開' : '折りたたむ';
         }
     }
 
