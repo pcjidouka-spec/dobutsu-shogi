@@ -887,3 +887,25 @@ function generateRoomId() {
 }
 
 console.log('Dobutsu Shogi WebSocket server initialized');
+
+// Graceful Shutdown Logic
+const shutdown = async () => {
+    console.log('Received kill signal, shutting down gracefully');
+    server.close(() => {
+        console.log('Closed out remaining connections');
+        pool.end(err => {
+            if (err) console.error('Error closing database pool', err);
+            else console.log('Database pool closed');
+            process.exit(0);
+        });
+    });
+
+    // Force close after 10s
+    setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 10000);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
