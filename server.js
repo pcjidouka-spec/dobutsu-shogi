@@ -233,58 +233,10 @@ app.get('/api/status', requireAuth, (req, res) => {
 // ランキング取得API
 app.get('/api/rankings', async (req, res) => {
     try {
-        // 今月（1日〜現在）のデータを対象にする
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 19).replace('T', ' ');
+        // 現在は全期間のデータを対象にする（変更前は月間のみでした）
 
-        // 勝ち数ランキング (Top 3)
-        // 自分がwinner='sente'でsente側、もしくはwinner='gote'でgote側の場合にカウント
-        const winsQuery = `
-            SELECT username, COUNT(*) as wins
-            FROM (
-                SELECT player_sente as username FROM match_history WHERE winner='sente' AND played_at >= ?
-                UNION ALL
-                SELECT player_gote as username FROM match_history WHERE winner='gote' AND played_at >= ?
-            ) as winners
-            GROUP BY username
-            ORDER BY wins DESC
-            LIMIT 3
-        `;
-
-        // 勝率ランキング (Top 3) - 最低3戦以上
-        const winRateQuery = `
-            SELECT 
-                p.username,
-                COUNT(CASE WHEN 
-                    (m.player_sente = p.username AND m.winner = 'sente') OR 
-                    (m.player_gote = p.username AND m.winner = 'gote') 
-                THEN 1 END) as wins,
-                COUNT(*) as total_matches,
-                (COUNT(CASE WHEN 
-                    (m.player_sente = p.username AND m.winner = 'sente') OR 
-                    (m.player_gote = p.username AND m.winner = 'gote') 
-                THEN 1 END) / COUNT(*)) * 100 as win_rate
-            FROM (
-                SELECT player_sente as username, id, winner, player_sente, player_gote, played_at FROM match_history WHERE played_at >= ?
-                UNION ALL
-                SELECT player_gote as username, id, winner, player_sente, player_gote, played_at FROM match_history WHERE played_at >= ?
-            ) as matches
-            JOIN (
-                SELECT player_sente as username FROM match_history WHERE played_at >= ?
-                UNION
-                SELECT player_gote as username FROM match_history WHERE played_at >= ?
-            ) as p ON matches.username = p.username
-            JOIN match_history m ON matches.id = m.id
-            GROUP BY p.username
-            HAVING total_matches >= 3
-            ORDER BY win_rate DESC, total_matches DESC
-            LIMIT 3
-        `;
-
-        // 簡易版クエリ：MySQLのバージョンや互換性を考慮してJS側で集計した方が安全かもしれないが、一旦SQLで試みる
-        // 上記SQLは複雑になりがちなので、全履歴を取得してJSで計算するアプローチに変更
-
-        const [history] = await pool.query('SELECT * FROM match_history WHERE played_at >= ?', [startOfMonth]);
+        // 全履歴を取得
+        const [history] = await pool.query('SELECT * FROM match_history');
 
         const stats = {};
 
