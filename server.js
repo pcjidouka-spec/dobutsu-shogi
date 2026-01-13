@@ -233,48 +233,95 @@ app.get('/api/status', requireAuth, (req, res) => {
 // ランキング取得API
 app.get('/api/rankings', async (req, res) => {
     try {
-        // 現在は全期間のデータを対象にする（変更前は月間のみでした）
+        // --- 1. 通算ランキング (All-Time) ---
+        // 既存の users テーブルから累積データを取得
+        const [users] = await pool.query('SELECT username, wins, losses, draws, created_at FROM users');
 
-        // 全履歴を取得
+        const createAllTimeRanking = (type) => {
+            return users
+                .filter(u => {
+                    const total = u.wins + u.losses + u.draws;
+                    return type === 'wins' ? u.wins > 0 : total >= 3;
+                })
+                .map(u => {
+                    const total = u.wins + u.losses + u.draws;
+                    return {
+                        username: u.username,
+                        wins: u.wins,
+                        total: total,
+                        winRate: total > 0 ? (u.wins / total) * 100 : 0,
+                        created_at: new Date(u.created_at)
+                    };
+                })
+                .sort((a, b) => {
+                    if (type === 'wins') {
+                        if (b.wins !== a.wins) return b.wins - a.wins;
+                    } else {
+                        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+                    }
+                    return b.created_at - a.created_at; // タイブレーク: 新しい順
+                })
+                .slice(0, 3);
+        };
+
+        // --- 2. 月間ランキング (Monthly) ---
+        // match_history から今月のデータを集計
         const [history] = await pool.query('SELECT * FROM match_history');
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const stats = {};
+        const monthlyStats = {};
+        // ユーザー情報のマップ（タイブレーク用）
+        const userMap = new Map();
+        users.forEach(u => userMap.set(u.username, new Date(u.created_at)));
 
         history.forEach(match => {
-            // 先手集計
-            if (!stats[match.player_sente]) stats[match.player_sente] = { wins: 0, total: 0 };
-            stats[match.player_sente].total++;
-            if (match.winner === 'sente') stats[match.player_sente].wins++;
+            const date = new Date(match.played_at);
+            if (date < startOfMonth) return; // 今月以前はスキップ
 
-            // 後手集計
-            if (!stats[match.player_gote]) stats[match.player_gote] = { wins: 0, total: 0 };
-            stats[match.player_gote].total++;
-            if (match.winner === 'gote') stats[match.player_gote].wins++;
+            const updateStats = (statsObj, player, winner) => {
+                if (!statsObj[player]) statsObj[player] = { wins: 0, total: 0 };
+                statsObj[player].total++;
+                if (winner === 'sente' && player === match.player_sente) statsObj[player].wins++;
+                if (winner === 'gote' && player === match.player_gote) statsObj[player].wins++;
+            };
+
+            updateStats(monthlyStats, match.player_sente, match.winner);
+            updateStats(monthlyStats, match.player_gote, match.winner);
         });
 
-        const rankingData = Object.keys(stats).map(username => ({
-            username,
-            wins: stats[username].wins,
-            total: stats[username].total,
-            winRate: (stats[username].wins / stats[username].total) * 100
-        }));
-
-        // 勝ち数順
-        const winsRanking = [...rankingData].sort((a, b) => b.wins - a.wins).slice(0, 3);
-
-        // 勝率順 (3戦以上対象)
-        const rateRanking = [...rankingData]
-            .filter(d => d.total >= 3)
-            .sort((a, b) => b.winRate - a.winRate)
-            .slice(0, 3);
+        const createMonthlyRanking = (type) => {
+            return Object.keys(monthlyStats).map(username => ({
+                username,
+                wins: monthlyStats[username].wins,
+                total: monthlyStats[username].total,
+                winRate: monthlyStats[username].total > 0 ? (monthlyStats[username].wins / monthlyStats[username].total) * 100 : 0,
+                created_at: userMap.get(username) || new Date(0)
+            })).filter(u => type === 'wins' ? u.wins > 0 : u.total >= 3)
+                .sort((a, b) => {
+                    if (type === 'wins') {
+                        if (b.wins !== a.wins) return b.wins - a.wins;
+                    } else {
+                        if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+                    }
+                    return b.created_at - a.created_at;
+                })
+                .slice(0, 3);
+        };
 
         res.json({
-            month: now.getMonth() + 1,
-            wins: winsRanking,
-            rates: rateRanking
+            allTime: {
+                wins: createAllTimeRanking('wins'),
+                rates: createAllTimeRanking('rates')
+            },
+            monthly: {
+                wins: createMonthlyRanking('wins'),
+                rates: createMonthlyRanking('rates')
+            }
         });
 
     } catch (error) {
+        console.error('Ranking API Error:', error);
         res.status(500).json({ error: error.message });
     }
 });
