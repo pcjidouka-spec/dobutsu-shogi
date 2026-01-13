@@ -1,0 +1,155 @@
+/* Ranking UI */
+.ranking-container {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 248, 255, 0.9));
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    max-width: 800px;
+    width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+}
+
+.ranking-header {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #d4af37;
+    /* Metallic Gold */
+    margin-bottom: 1.5rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.ranking-icon {
+    font-size: 1.8rem;
+    animation: shine 2s infinite linear;
+}
+
+@keyframes shine {
+    0% {
+        filter: brightness(100%);
+        transform: scale(1);
+    }
+
+    50% {
+        filter: brightness(130%);
+        transform: scale(1.1);
+    }
+
+    100% {
+        filter: brightness(100%);
+        transform: scale(1);
+    }
+}
+
+.ranking-columns {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.ranking-column {
+    flex: 1;
+    min-width: 280px;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.ranking-column h3 {
+    text-align: center;
+    color: #4a5568;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+.ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s;
+}
+
+.ranking-item:hover {
+    transform: translateY(-2px);
+}
+
+.rank-badge {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin-right: 12px;
+    font-weight: bold;
+    color: white;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.rank-1 {
+    background: linear-gradient(135deg, #FFD700, #FDB931);
+    box-shadow: 0 2px 5px rgba(212, 175, 55, 0.4);
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #E0E0E0, #BDBDBD);
+    box-shadow: 0 2px 5px rgba(169, 169, 169, 0.4);
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #CD7F32, #A0522D);
+    box-shadow: 0 2px 5px rgba(205, 127, 50, 0.4);
+}
+
+.rank-user {
+    flex-grow: 1;
+    font-weight: 500;
+    color: #2d3748;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rank-score {
+    font-weight: bold;
+    color: #4a5568;
+    min-width: 60px;
+    text-align: right;
+}
+
+.ranking-loader {
+    text-align: center;
+    color: #a0aec0;
+    font-style: italic;
+    padding: 20px;
+}
+
+.ranking-note {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #a0aec0;
+    margin-top: 10px;
+    margin-right: 15px;
+}

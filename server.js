@@ -56,6 +56,17 @@ async function initDB() {
             )
         `);
 
+        // 対戦履歴テーブル作成（ランキング用）
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS match_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                player_sente VARCHAR(255) NOT NULL,
+                player_gote VARCHAR(255) NOT NULL,
+                winner VARCHAR(50) NOT NULL,
+                played_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
         // Insert default settings if not exists
         const [rows] = await connection.query('SELECT * FROM game_settings WHERE setting_key = ?', ['maxPlayersPerRoom']);
         if (rows.length === 0) {
@@ -218,6 +229,103 @@ app.get('/api/status', requireAuth, (req, res) => {
     };
     res.json(status);
 });
+
+// ランキング取得API
+app.get('/api/rankings', async (req, res) => {
+    try {
+        // 今月（1日〜現在）のデータを対象にする
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 19).replace('T', ' ');
+
+        // 勝ち数ランキング (Top 3)
+        // 自分がwinner='sente'でsente側、もしくはwinner='gote'でgote側の場合にカウント
+        const winsQuery = `
+            SELECT username, COUNT(*) as wins
+            FROM (
+                SELECT player_sente as username FROM match_history WHERE winner='sente' AND played_at >= ?
+                UNION ALL
+                SELECT player_gote as username FROM match_history WHERE winner='gote' AND played_at >= ?
+            ) as winners
+            GROUP BY username
+            ORDER BY wins DESC
+            LIMIT 3
+        `;
+
+        // 勝率ランキング (Top 3) - 最低3戦以上
+        const winRateQuery = `
+            SELECT 
+                p.username,
+                COUNT(CASE WHEN 
+                    (m.player_sente = p.username AND m.winner = 'sente') OR 
+                    (m.player_gote = p.username AND m.winner = 'gote') 
+                THEN 1 END) as wins,
+                COUNT(*) as total_matches,
+                (COUNT(CASE WHEN 
+                    (m.player_sente = p.username AND m.winner = 'sente') OR 
+                    (m.player_gote = p.username AND m.winner = 'gote') 
+                THEN 1 END) / COUNT(*)) * 100 as win_rate
+            FROM (
+                SELECT player_sente as username, id, winner, player_sente, player_gote, played_at FROM match_history WHERE played_at >= ?
+                UNION ALL
+                SELECT player_gote as username, id, winner, player_sente, player_gote, played_at FROM match_history WHERE played_at >= ?
+            ) as matches
+            JOIN (
+                SELECT player_sente as username FROM match_history WHERE played_at >= ?
+                UNION
+                SELECT player_gote as username FROM match_history WHERE played_at >= ?
+            ) as p ON matches.username = p.username
+            JOIN match_history m ON matches.id = m.id
+            GROUP BY p.username
+            HAVING total_matches >= 3
+            ORDER BY win_rate DESC, total_matches DESC
+            LIMIT 3
+        `;
+
+        // 簡易版クエリ：MySQLのバージョンや互換性を考慮してJS側で集計した方が安全かもしれないが、一旦SQLで試みる
+        // 上記SQLは複雑になりがちなので、全履歴を取得してJSで計算するアプローチに変更
+
+        const [history] = await pool.query('SELECT * FROM match_history WHERE played_at >= ?', [startOfMonth]);
+
+        const stats = {};
+
+        history.forEach(match => {
+            // 先手集計
+            if (!stats[match.player_sente]) stats[match.player_sente] = { wins: 0, total: 0 };
+            stats[match.player_sente].total++;
+            if (match.winner === 'sente') stats[match.player_sente].wins++;
+
+            // 後手集計
+            if (!stats[match.player_gote]) stats[match.player_gote] = { wins: 0, total: 0 };
+            stats[match.player_gote].total++;
+            if (match.winner === 'gote') stats[match.player_gote].wins++;
+        });
+
+        const rankingData = Object.keys(stats).map(username => ({
+            username,
+            wins: stats[username].wins,
+            total: stats[username].total,
+            winRate: (stats[username].wins / stats[username].total) * 100
+        }));
+
+        // 勝ち数順
+        const winsRanking = [...rankingData].sort((a, b) => b.wins - a.wins).slice(0, 3);
+
+        // 勝率順 (3戦以上対象)
+        const rateRanking = [...rankingData]
+            .filter(d => d.total >= 3)
+            .sort((a, b) => b.winRate - a.winRate)
+            .slice(0, 3);
+
+        res.json({
+            month: now.getMonth() + 1,
+            wins: winsRanking,
+            rates: rateRanking
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // --------------------------
 
 // WebSocketサーバー
@@ -283,6 +391,7 @@ async function registerUser(username) {
 // 戦績更新（非同期）
 async function updateGameStats(winner, senteName, goteName) {
     try {
+        // ユーザー戦績更新
         if (winner === 'draw') {
             await pool.query('UPDATE users SET draws = draws + 1 WHERE username = ?', [senteName]);
             await pool.query('UPDATE users SET draws = draws + 1 WHERE username = ?', [goteName]);
@@ -293,6 +402,13 @@ async function updateGameStats(winner, senteName, goteName) {
             await pool.query('UPDATE users SET losses = losses + 1 WHERE username = ?', [senteName]);
             await pool.query('UPDATE users SET wins = wins + 1 WHERE username = ?', [goteName]);
         }
+
+        // 対戦履歴保存
+        await pool.query(
+            'INSERT INTO match_history (player_sente, player_gote, winner) VALUES (?, ?, ?)',
+            [senteName, goteName, winner]
+        );
+
         console.log(`Stats updated for game: ${senteName} vs ${goteName} (Winner: ${winner})`);
     } catch (error) {
         console.error('Error updating game stats:', error);
