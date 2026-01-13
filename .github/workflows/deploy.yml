@@ -2,29 +2,44 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ "main" ]   # main に push したらデプロイ
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Add SSH key
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.EC2_KEY }}
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
 
-    - name: Copy files to EC2
-      run: |
-        scp -o StrictHostKeyChecking=no \
-          -r ./* \
-          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/ec2-user/dobutsu-shogi/
+      - name: Copy files to EC2 via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "."
+          target: "~/dobutsu-shogi"
+          # Exclude .git and node_modules to speed up transfer and avoid issues
+          rm: false # Do not delete destination folder, just overwrite
+          strip_components: 0
 
-    - name: Restart PM2 on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no \
-          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-          "cd ~/dobutsu-shogi && npm install && pm2 restart dobutsu-shogi"
+      - name: Restart Application via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            cd ~/dobutsu-shogi
+            # Ensure .env permissions
+            chmod 600 .env
+            # Install dependencies
+            npm install --production
+            # Restart PM2 process with updated environment
+            pm2 restart dobutsu-shogi --update-env
