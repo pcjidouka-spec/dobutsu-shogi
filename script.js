@@ -261,6 +261,62 @@ class DobutsuShogi {
     }
 }
 
+// ランキング取得と表示
+async function fetchRankings() {
+    try {
+        const response = await fetch('/api/rankings');
+        if (!response.ok) throw new Error('Failed to fetch rankings');
+
+        const data = await response.json();
+        const winsContainer = document.getElementById('ranking-wins');
+        const ratesContainer = document.getElementById('ranking-rates');
+
+        // 勝ち数ランキング表示
+        if (winsContainer) {
+            winsContainer.innerHTML = '';
+            if (data.wins.length === 0) {
+                winsContainer.innerHTML = '<div class="ranking-loader">データなし</div>';
+            } else {
+                data.wins.forEach((user, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'ranking-item';
+                    item.innerHTML = `
+                        <div class="rank-badge rank-${index + 1}">${index + 1}</div>
+                        <div class="rank-user" title="${user.username}">${user.username}</div>
+                        <div class="rank-score">${user.wins}勝</div>
+                    `;
+                    winsContainer.appendChild(item);
+                });
+            }
+        }
+
+        // 勝率ランキング表示
+        if (ratesContainer) {
+            ratesContainer.innerHTML = '';
+            if (data.rates.length === 0) {
+                ratesContainer.innerHTML = '<div class="ranking-loader">データなし</div>';
+            } else {
+                data.rates.forEach((user, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'ranking-item';
+                    item.innerHTML = `
+                        <div class="rank-badge rank-${index + 1}">${index + 1}</div>
+                        <div class="rank-user" title="${user.username}">${user.username}</div>
+                        <div class="rank-score">${user.winRate.toFixed(1)}%</div>
+                    `;
+                    ratesContainer.appendChild(item);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading rankings:', error);
+        const winsEl = document.getElementById('ranking-wins');
+        const ratesEl = document.getElementById('ranking-rates');
+        if (winsEl) winsEl.innerHTML = '<div class="ranking-loader">読み込み失敗</div>';
+        if (ratesEl) ratesEl.innerHTML = '<div class="ranking-loader">読み込み失敗</div>';
+    }
+}
+
 // オンライン対戦UI管理
 class OnlineGameUI {
     constructor() {
@@ -1074,7 +1130,7 @@ class OnlineGameUI {
         this.recordCollapsed = !this.recordCollapsed;
         this.recordContent.style.display = this.recordCollapsed ? 'none' : 'block';
         if (this.recordToggleBtn) {
-            this.recordToggleBtn.textContent = this.recordCollapsed ? '展開' : '折りたたむ';
+            this.recordToggleBtn.textContent = this.recordCollapsed ? '展開' : '畳む';
         }
     }
 
@@ -2933,6 +2989,9 @@ class GameModeManager {
 
     startOnlineMode() {
         this.modeSelection.style.display = 'none';
+        const rankingContainer = document.getElementById('ranking-container');
+        if (rankingContainer) rankingContainer.style.display = 'none';
+
         const name = prompt('プレイヤー名を入力してください:');
         if (name) {
             this.waitingMessage.textContent = '対戦相手を探しています...';
@@ -2942,6 +3001,8 @@ class GameModeManager {
         } else {
             // キャンセルされた場合はモード選択に戻る
             this.modeSelection.style.display = 'block';
+            const rankingContainer = document.getElementById('ranking-container');
+            if (rankingContainer) rankingContainer.style.display = 'block';
             this.waitingMessage.textContent = '';
         }
     }
@@ -2952,12 +3013,16 @@ class GameModeManager {
             return;
         }
         this.modeSelection.style.display = 'none';
+        const rankingContainer = document.getElementById('ranking-container');
+        if (rankingContainer) rankingContainer.style.display = 'none';
         this.aiSelection.style.display = 'block';
     }
 
     hideAISelection() {
         this.aiSelection.style.display = 'none';
         this.modeSelection.style.display = 'block';
+        const rankingContainer = document.getElementById('ranking-container');
+        if (rankingContainer) rankingContainer.style.display = 'block';
     }
 
     showDevSelection() {
@@ -2966,6 +3031,8 @@ class GameModeManager {
             return;
         }
         this.modeSelection.style.display = 'none';
+        const rankingContainer = document.getElementById('ranking-container');
+        if (rankingContainer) rankingContainer.style.display = 'none';
         this.devSelection.style.display = 'block';
 
         // 開発者モード用UIクラスの初期化
@@ -2977,6 +3044,8 @@ class GameModeManager {
     hideDevSelection() {
         this.devSelection.style.display = 'none';
         this.modeSelection.style.display = 'block';
+        const rankingContainer = document.getElementById('ranking-container');
+        if (rankingContainer) rankingContainer.style.display = 'block';
     }
 
     startAIMode(aiType) {
@@ -3016,4 +3085,5 @@ class GameModeManager {
 
 window.addEventListener('DOMContentLoaded', () => {
     new GameModeManager();
+    fetchRankings();
 });
