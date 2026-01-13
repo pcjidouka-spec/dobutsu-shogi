@@ -25,23 +25,48 @@
 
             <div class="ranking-container" id="ranking-container">
                 <div class="ranking-header">
-                    <span class="ranking-icon">👑</span> 今月のオンライン対戦ランキング <span class="ranking-icon">👑</span>
+                    <span class="ranking-icon">👑</span> オンライン対戦ランキング <span class="ranking-icon">👑</span>
                 </div>
-                <div class="ranking-columns">
-                    <div class="ranking-column">
-                        <h3>🏆 勝ち数ランキング</h3>
-                        <div class="ranking-list" id="ranking-wins">
-                            <div class="ranking-loader">集計中...</div>
+                <div class="ranking-tabs">
+                    <button class="ranking-tab active" onclick="switchRankingTab('allTime')">通算</button>
+                    <button class="ranking-tab" onclick="switchRankingTab('monthly')">今月</button>
+                </div>
+
+                <div id="ranking-content-allTime" class="ranking-content active">
+                    <div class="ranking-columns">
+                        <div class="ranking-column">
+                            <h3>🏆 通算勝ち数</h3>
+                            <div class="ranking-list" id="ranking-allTime-wins">
+                                <div class="ranking-loader">集計中...</div>
+                            </div>
+                        </div>
+                        <div class="ranking-column">
+                            <h3>📈 通算勝率</h3>
+                            <div class="ranking-list" id="ranking-allTime-rates">
+                                <div class="ranking-loader">集計中...</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="ranking-column">
-                        <h3>📈 勝率ランキング</h3>
-                        <div class="ranking-list" id="ranking-rates">
-                            <div class="ranking-loader">集計中...</div>
+                </div>
+
+                <div id="ranking-content-monthly" class="ranking-content" style="display: none;">
+                    <div class="ranking-columns">
+                        <div class="ranking-column">
+                            <h3>🏆 今月の勝ち数</h3>
+                            <div class="ranking-list" id="ranking-monthly-wins">
+                                <div class="ranking-loader">集計中...</div>
+                            </div>
+                        </div>
+                        <div class="ranking-column">
+                            <h3>📈 今月の勝率</h3>
+                            <div class="ranking-list" id="ranking-monthly-rates">
+                                <div class="ranking-loader">集計中...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="ranking-note">※勝率は月間3戦以上が対象</div>
+
+                <div class="ranking-note">※勝率は3戦以上が対象<br>※同点の場合は登録が新しい順</div>
             </div>
 
             <div class="ai-selection" id="ai-selection" style="display: none;">

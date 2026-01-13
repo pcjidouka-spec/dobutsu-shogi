@@ -175,3 +175,51 @@
     color: rgba(0, 0, 0, 0.8);
     border-color: rgba(0, 0, 0, 0.4);
 }
+
+/* Tabs */
+.ranking-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.ranking-tab {
+    padding: 8px 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #718096;
+    transition: all 0.3s;
+    outline: none;
+}
+
+.ranking-tab.active {
+    background: #d4af37;
+    color: white;
+    box-shadow: 0 4px 6px rgba(212, 175, 55, 0.3);
+    transform: translateY(-1px);
+}
+
+.ranking-tab:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+}
+
+.ranking-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

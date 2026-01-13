@@ -3087,3 +3087,84 @@ window.addEventListener('DOMContentLoaded', () => {
     new GameModeManager();
     fetchRankings();
 });
+
+// ランキングタブ切り替え
+window.switchRankingTab = function (tabName) {
+    // タブの非アクティブ化
+    document.querySelectorAll('.ranking-tab').forEach(btn => btn.classList.remove('active'));
+    // コンテンツの非表示
+    document.querySelectorAll('.ranking-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+    });
+
+    // 選択されたタブとコンテンツをアクティブ化
+    const activeBtn = document.querySelector(`.ranking-tab[data-tab="${tabName}"]`);
+    if (activeBtn) activeBtn.classList.add('active'); // data-tab属性がない場合はonclickでクラス制御してもよいが、念のため
+
+    // onclickで制御しているため、ボタン自体のクラスはthisで切り替えるのが一般的だが、
+    // ここではグローバル関数からDOM操作で整合性を保つ
+    // ボタンのactiveクラス更新
+    const buttons = document.querySelectorAll('.ranking-tab');
+    buttons.forEach(btn => {
+        if (btn.textContent === (tabName === 'allTime' ? '通算' : '今月')) {
+            btn.classList.add('active');
+        }
+    });
+
+    const activeContent = document.getElementById(`ranking-content-${tabName}`);
+    if (activeContent) {
+        activeContent.classList.add('active');
+        activeContent.style.display = 'block';
+    }
+};
+
+async function fetchRankings() {
+    try {
+        const res = await fetch('/api/rankings');
+
+        if (!res.ok) throw new Error('API Error');
+
+        const data = await res.json();
+
+        // 通算ランキングの描画
+        renderRankingList('ranking-allTime-wins', data.allTime.wins, 'wins');
+        renderRankingList('ranking-allTime-rates', data.allTime.rates, 'rate');
+
+        // 月間ランキングの描画
+        renderRankingList('ranking-monthly-wins', data.monthly.wins, 'wins');
+        renderRankingList('ranking-monthly-rates', data.monthly.rates, 'rate');
+
+    } catch (e) {
+        console.error('Failed to fetch rankings:', e);
+        const errorHtml = '<div class="ranking-error">読み込み失敗</div>';
+        ['ranking-allTime-wins', 'ranking-allTime-rates', 'ranking-monthly-wins', 'ranking-monthly-rates'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = errorHtml;
+        });
+    }
+}
+
+function renderRankingList(elementId, items, type) {
+    const list = document.getElementById(elementId);
+    if (!list) return;
+
+    if (!items || items.length === 0) {
+        list.innerHTML = '<div class="ranking-empty">データなし</div>';
+        return;
+    }
+
+    list.innerHTML = items.map((user, index) => {
+        const rankClass = index < 3 ? `rank-${index + 1}` : '';
+        const value = type === 'wins' ? `${user.wins}勝` : `${user.winRate.toFixed(1)}%`;
+        const total = type === 'rate' ? `<span style="font-size:0.8em; color:#aaa;">(${user.total}戦)</span>` : '';
+
+        return `
+            <div class="ranking-item">
+                <div class="rank-badge ${rankClass}">${index + 1}</div>
+                <div class="rank-user">${user.username}</div>
+                <div class="rank-score">${value} ${total}</div>
+            </div>
+        `;
+    }).join('');
+}
