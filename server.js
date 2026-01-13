@@ -267,8 +267,42 @@ function handleMessage(ws, data) {
     }
 }
 
+// ユーザー登録（非同期）
+async function registerUser(username) {
+    try {
+        await pool.query(
+            'INSERT INTO users (username, rating) VALUES (?, 1500) ON DUPLICATE KEY UPDATE username=username',
+            [username]
+        );
+        console.log(`User registered/verified: ${username}`);
+    } catch (error) {
+        console.error(`Error registering user ${username}:`, error);
+    }
+}
+
+// 戦績更新（非同期）
+async function updateGameStats(winner, senteName, goteName) {
+    try {
+        if (winner === 'draw') {
+            await pool.query('UPDATE users SET draws = draws + 1 WHERE username = ?', [senteName]);
+            await pool.query('UPDATE users SET draws = draws + 1 WHERE username = ?', [goteName]);
+        } else if (winner === 'sente') {
+            await pool.query('UPDATE users SET wins = wins + 1 WHERE username = ?', [senteName]);
+            await pool.query('UPDATE users SET losses = losses + 1 WHERE username = ?', [goteName]);
+        } else if (winner === 'gote') {
+            await pool.query('UPDATE users SET losses = losses + 1 WHERE username = ?', [senteName]);
+            await pool.query('UPDATE users SET wins = wins + 1 WHERE username = ?', [goteName]);
+        }
+        console.log(`Stats updated for game: ${senteName} vs ${goteName} (Winner: ${winner})`);
+    } catch (error) {
+        console.error('Error updating game stats:', error);
+    }
+}
+
 function handleJoin(ws, playerName) {
     ws.playerName = playerName;
+    // ユーザー登録を非同期で実行（ゲーム進行をブロックしない）
+    registerUser(playerName);
 
     // 待機中のプレイヤーがいるかチェック
     if (waitingPlayers.length > 0) {
@@ -376,6 +410,10 @@ function handleMove(ws, data) {
     if (winner) {
         // 再戦リクエストをリセット
         rematchRequests.delete(room.id);
+
+        // 戦績更新
+        updateGameStats(winner, room.players.sente.playerName, room.players.gote.playerName);
+
         broadcastToRoom(room, {
             type: 'gameOver',
             winner: winner,
@@ -435,6 +473,10 @@ function handleDrop(ws, data) {
     if (winner) {
         // 再戦リクエストをリセット
         rematchRequests.delete(room.id);
+
+        // 戦績更新
+        updateGameStats(winner, room.players.sente.playerName, room.players.gote.playerName);
+
         broadcastToRoom(room, {
             type: 'gameOver',
             winner: winner,
