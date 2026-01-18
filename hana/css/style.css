@@ -147,7 +147,7 @@ iframe {
 /* ホーム　index.htm
 ----------------------------------------------------------------------------------------------.*/
 .cover-home {
-    background-image: url(../images/background_manga.png);
+    background-image: url(../images/ダンジョン飯.webp);
     color: rgb(47, 209, 96);
 }
 
@@ -194,7 +194,7 @@ iframe {
 }
 
 .cover-menu {
-    background-image: url(../images/background_manga.png);
+    background-image: url(../images/至高.jpg);
     background-size: contain;
     /* 画像全体が収まるように縮小 */
     background-repeat: no-repeat;
@@ -231,7 +231,7 @@ iframe {
 
 /* Info.html*/
 .cover-info {
-    background-image: url(../images/background_manga.png);
+    background-image: url(../images/煉獄さん.webp);
     background-size: contain;
     /* 画像全体が収まるように縮小 */
     background-repeat: no-repeat;
@@ -407,7 +407,7 @@ input[type="radio"]:checked+label {
 
     /* HOME PC版 .*/
     .cover-home {
-        background-image: url(../images/background_manga.png);
+        background-image: url(../images/孤独のグルメ.jpg);
         color: rgb(227, 237, 245);
     }
 
@@ -419,7 +419,7 @@ input[type="radio"]:checked+label {
 
     /* MENU PC版 */
     .cover-menu {
-        background-image: url(../images/background_manga.png);
+        background-image: url(../images/至高.jpg);
         background-size: contain;
         /* 画像全体が収まるように縮小 */
         background-repeat: no-repeat;
@@ -451,7 +451,7 @@ input[type="radio"]:checked+label {
 
     /* info PC版*/
     .cover-info {
-        background-image: url(../images/background_manga.png);
+        background-image: url(../images/煉獄さん.webp);
         background-size: contain;
         /* 画像全体が収まるように縮小 */
         background-repeat: no-repeat;
