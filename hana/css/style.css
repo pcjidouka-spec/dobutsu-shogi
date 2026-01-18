@@ -149,6 +149,9 @@ iframe {
 .cover-home {
     background-image: url(../images/ダンジョン飯.webp);
     color: rgb(47, 209, 96);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
 }
 
 .about {
@@ -409,6 +412,9 @@ input[type="radio"]:checked+label {
     .cover-home {
         background-image: url(../images/孤独のグルメ.jpg);
         color: rgb(227, 237, 245);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
     }
 
     .about {
