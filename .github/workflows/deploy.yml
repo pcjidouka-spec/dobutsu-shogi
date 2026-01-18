@@ -23,7 +23,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           source: "."
-          target: "~/dobutsu-shogi"
+          target: "~/dobutsu-shogi-app/dobutsu-shogi"
           # Exclude .git and node_modules to speed up transfer and avoid issues
           rm: false # Do not delete destination folder, just overwrite
           strip_components: 0
@@ -36,7 +36,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            cd ~/dobutsu-shogi
+            cd ~/dobutsu-shogi-app/dobutsu-shogi
             # Ensure .env permissions
             chmod 600 .env
             # Install dependencies
