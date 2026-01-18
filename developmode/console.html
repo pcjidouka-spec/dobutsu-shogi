@@ -150,6 +150,17 @@
         </div>
     </div>
 
+    <div id="mode-selection-overlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f4f9; z-index: 900; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h2 style="margin-bottom: 30px; font-size: 2em; color: #2c3e50;">Select Mode</h2>
+        <div style="display: flex; gap: 30px;">
+            <button class="btn" style="padding: 20px 40px; font-size: 18px; background-color: #e67e22;"
+                onclick="selectMode('hana')">HANA Mode</button>
+            <button class="btn" style="padding: 20px 40px; font-size: 18px;" onclick="selectMode('admin')">User
+                Management</button>
+        </div>
+    </div>
+
     <div class="container" id="main-content">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h1>User Management</h1>
@@ -184,8 +195,18 @@
         // Check Login
         if (authToken) {
             document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-            fetchUsers();
+            // Show mode selection instead of main content directly
+            document.getElementById('mode-selection-overlay').style.display = 'flex';
+        }
+
+        function selectMode(mode) {
+            if (mode === 'hana') {
+                window.location.href = '../hana/index.html';
+            } else {
+                document.getElementById('mode-selection-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                fetchUsers();
+            }
         }
 
         async function attemptLogin() {
@@ -202,8 +223,9 @@
                     authToken = password;
                     sessionStorage.setItem('devToken', password);
                     document.getElementById('login-overlay').style.display = 'none';
-                    document.getElementById('main-content').style.display = 'block';
-                    fetchUsers();
+                    // Show mode selection
+                    document.getElementById('mode-selection-overlay').style.display = 'flex';
+                    // fetchUsers(); // Users will be fetched when Admin mode is selected
                 } else {
                     alert('Invalid Password');
                 }

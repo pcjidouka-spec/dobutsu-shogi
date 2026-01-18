@@ -1,0 +1,466 @@
+@charset "utf-8";
+
+/* 共通設定
+----------------------------------------------------------------------------------------------.*/
+html {
+    font-size: 100%;
+}
+
+body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "BIZ UDPGothic", sans-serif;
+    line-height: 1.7;
+    color: rgb(0, 0, 0);
+}
+
+a {
+    text-decoration: none;
+}
+
+img {
+    max-width: 100%;
+}
+
+/* レイアウト */
+.wrapper {
+    max-width: 1120px;
+    margin: auto;
+    padding: 0 1.5rem;
+}
+
+.align-center {
+    text-align: center;
+}
+
+/* 見出し */
+.font-english {
+    font-family: "Philosopher", sans-serif;
+    font-weight: 400;
+}
+
+.font-white {
+    font-family: "Philosopher", sans-serif;
+    font-weight: #fff;
+}
+
+/* ボタン */
+.btn {
+    display: inline-block;
+    /* ↑ブロックタイプのようにwidth,height,余白,borderの設定ができ、インラインタイプのように中身分の幅になって横に並んでくれる */
+    font-size: 1.3rem;
+    background-color: #0bd;
+    color: #fff;
+    border-radius: 50px;
+    padding: 0.75rem 1.5rem;
+    /* ボタンのアニメーション */
+    transition: 0.5s;
+}
+
+.btn:hover {
+    background-color: #0090aa;
+}
+
+/* iframe */
+iframe {
+    width: 100%;
+}
+
+/* ヘッダーカバー画像 */
+.cover {
+    background-size: cover;
+    background-position: center bottom;
+    height: 800px;
+}
+
+.page-title,
+.heading-large,
+.heading-medium {
+    font-size: 3rem;
+    text-align: center;
+}
+
+.page-title {
+    font-size: 3rem;
+    text-align: center;
+    margin-top: 2rem;
+    line-height: 1.4;
+}
+
+.heading-large {
+    margin-bottom: 1rem;
+}
+
+.sub-cover {
+    background-size: cover;
+    background-position: center bottom;
+    height: 528px;
+    margin-bottom: 4rem;
+}
+
+/* ヘッダー */
+.page-header {
+    padding-top: 0.5rem;
+}
+
+.logo {
+    width: 160px;
+    float: left;
+}
+
+.main-nav {
+    display: flex;
+    justify-content: center;
+    gap: 2.5rem;
+    font-size: 1.5rem;
+    list-style: none;
+}
+
+.main-nav li a {
+    margin-top: 20px;
+    color: black;
+    /* 白背景なので文字は黒が見やすい */
+    background-color: white;
+    /* 背景を白に */
+    padding: 8px 15px;
+    /* 内側の余白をしっかり取る */
+    border-radius: 6px;
+    /* 角を丸める（不要なら削除） */
+    text-decoration: none;
+    /* 下線を消す */
+    display: inline-block;
+    /* ボックスとして表示 */
+}
+
+.main-nav a:hover {
+    color: #0bd;
+}
+
+/*フッター
+-----------------------------------------------------*/
+.copyright {
+    background-color: #432;
+    text-align: center;
+    padding: 2rem 0;
+    margin-top: 6rem;
+    color: #fff;
+}
+
+/* ホーム　index.htm
+----------------------------------------------------------------------------------------------.*/
+.cover-home {
+    background-image: url(../images/孤独のグルメ.jpg);
+    color: rgb(47, 209, 96);
+}
+
+.about {
+    max-width: 736px;
+    padding: 0 1.5rem;
+    margin: 3rem auto 4rem;
+}
+
+.about p {
+    margin-bottom: 3rem;
+}
+
+.marginarrange {
+    margin-bottom: 1rem;
+}
+
+
+
+/* menu.html .*/
+.menubody {
+    background-color: antiquewhite;
+    margin-bottom: 30px;
+}
+
+.side-menu {
+    list-style: none;
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.side-menu a {
+    color: #432;
+    display: block;
+    padding: 1rem;
+}
+
+.side-menu li {
+    border-bottom: 1px solid #c9c2bc;
+}
+
+.side-menu a:hover {
+    color: #0bd;
+}
+
+.cover-menu {
+    background-image: url(../images/至高.jpg);
+    background-size: contain;
+    /* 画像全体が収まるように縮小 */
+    background-repeat: no-repeat;
+    /* 繰り返し防止 */
+    background-position: center;
+    /* 中央に配置 */
+    width: 800px;
+    /* 必要に応じてサイズ調整 */
+    height: 300px;
+    /* 必要に応じてサイズ調整 */
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem 1.5rem;
+    text-align: center;
+}
+
+.item img {
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    /*トリミング*/
+    border-radius: 16px;
+}
+
+.item {
+    background-color: rgb(175, 226, 184);
+}
+
+.item p {
+    font-size: 0.875rem;
+}
+
+/* Info.html*/
+.cover-info {
+    background-image: url(../images/煉獄さん.webp);
+    background-size: contain;
+    /* 画像全体が収まるように縮小 */
+    background-repeat: no-repeat;
+    /* 繰り返し防止 */
+    background-position: center;
+    /* 中央に配置 */
+    width: 800px;
+    /* 必要に応じてサイズ調整 */
+    height: 300px;
+    /* 必要に応じてサイズ調整 */
+}
+
+/* 表の幅 */
+table.info {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    /* 列幅を固定レイアウトに */
+    margin-bottom: 20px;
+}
+
+table.info td,
+table.info th {
+    border: 1px solid #ccc;
+    padding: 8px;
+    vertical-align: top;
+    word-wrap: break-word;
+    /* 改行させる */
+}
+
+/* iframeをセル内で縮める */
+.location-map iframe {
+    width: 100% !important;
+    /* 表のセル幅いっぱい */
+    height: 200px;
+    /* 高さを揃える */
+    border: 0;
+    border-radius: 8px;
+    /* 少し角丸にして見やすく */
+}
+
+/* 列ごとに幅を指定 */
+table.info td:nth-child(5),
+/* 評価 */
+table.info th:nth-child(5) {
+    width: 60px;
+    /* 評価は小さめ */
+    text-align: center;
+}
+
+table.info td:nth-child(6),
+/* 備考 */
+table.info th:nth-child(6) {
+    width: 180px;
+    /* 備考は少し小さめ */
+}
+
+/* todayschoice.html*/
+.logo {
+    width: 210px;
+}
+
+body {
+    font-family: sans-serif;
+    text-align: center;
+    padding: 2em;
+    background-image: url(images/job_mystery_shopper_man.png);
+}
+
+.cover-choice {
+    background-color: #a2c6d7;
+}
+
+.vote-cover {
+    background-color: #fffbe6;
+}
+
+.vote-group {
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+    margin-bottom: 30px;
+}
+
+.vote-option {
+    border: 2px solid #ccc;
+    padding: 1em;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+input[type="radio"] {
+    display: none;
+}
+
+input[type="radio"]:checked+label {
+    border-color: gold;
+    background-color: #fffbe6;
+    box-shadow: 0 0 10px gold;
+}
+
+.ranking {
+    margin-top: 2em;
+    padding: 1em;
+    background-size: cover;
+    background-position: center;
+    color: #f7f0f5;
+    font-weight: bold;
+    border-radius: 10px;
+    display: none;
+}
+
+#ramen:checked~.ranking.ramen {
+    display: block;
+    background-image: url(images/menu10.jpg);
+}
+
+#teisyoku:checked~.ranking.teisyoku {
+    display: block;
+    background-image: url(images/menu7.jpg);
+}
+
+#others:checked~.ranking.others {
+    display: block;
+    background-image: url(images/menu9.jpg);
+}
+
+/* デスクトップ版
+----------------------------------------------------------------------------------------------.*/
+@media (min-width:800px) {
+
+    /*---------------- 共通設定 PC版 -------------------.*/
+    /* 見出し .*/
+    .page-title {
+        font-size: 5rem;
+    }
+
+    .heading-large {
+        font-size: 4rem;
+    }
+
+    .post-title {
+        font-size: 2rem;
+    }
+
+    /* ヘッダー PC版 .*/
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 1.5rem;
+    }
+
+    .main-nav {
+        font-size: 2rem;
+    }
+
+    /* ヘッダーカバー画像 .*/
+    .sub-cover {
+        height: 400px;
+        margin-bottom: 6rem;
+    }
+
+
+    /* フッター PC版 .*/
+    .page-footer {
+        background-image: url(../images/footer-s.webp);
+    }
+
+    .info th {
+        padding-left: 2.5rem;
+    }
+
+    /* HOME PC版 .*/
+    .cover-home {
+        background-image: url(../images/孤独のグルメ.jpg);
+        color: rgb(227, 237, 245);
+    }
+
+    .about {
+        margin: 4rem auto 0;
+    }
+
+
+
+    /* MENU PC版 */
+    .cover-menu {
+        background-image: url(../images/至高.jpg);
+        background-size: contain;
+        /* 画像全体が収まるように縮小 */
+        background-repeat: no-repeat;
+        /* 繰り返し防止 */
+        background-position: center;
+        /* 中央に配置 */
+        width: 900px;
+        /* 必要に応じてサイズ調整 */
+        height: 400px;
+        /* 必要に応じてサイズ調整 */
+    }
+
+    .grid {
+        gap: 3rem 2rem;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .item.img {
+        margin-bottom: 0.5rem;
+    }
+
+    .item p {
+        font-size: 1rem;
+    }
+
+    .item {
+        border: 1px solid #000;
+    }
+
+    /* info PC版*/
+    .cover-info {
+        background-image: url(../images/煉獄さん.webp);
+        background-size: contain;
+        /* 画像全体が収まるように縮小 */
+        background-repeat: no-repeat;
+        /* 繰り返し防止 */
+        background-position: center;
+        /* 中央に配置 */
+        width: 1200px;
+        /* 必要に応じてサイズ調整 */
+        height: 300px;
+        /* 必要に応じてサイズ調整 */
+    }
+}
