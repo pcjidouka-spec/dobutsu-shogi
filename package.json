@@ -1,15 +1,19 @@
 {
     "name": "dobutsu-shogi-online",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Online Dobutsu Shogi game with WebSocket",
     "main": "server.js",
     "scripts": {
-        "start": "node server.js"
+        "start": "node server.js",
+        "start:postgresql": "node server_postgresql.js"
     },
     "dependencies": {
         "dotenv": "^17.2.3",
         "express": "^4.18.2",
-        "mysql2": "^3.16.0",
+        "pg": "^8.11.3",
         "ws": "^8.14.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     }
 }
