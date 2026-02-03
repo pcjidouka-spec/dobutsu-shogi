@@ -21,10 +21,15 @@ const PORT = process.env.PORT || 3000;
 // PostgreSQL Connection Pool
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    // SupabaseはSSL必須のため、URLにsupabaseが含まれる場合や本番環境ではSSLを有効にする
-    ssl: (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase.co')) || process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false
+    // Supabaseの直接接続(5432)はIPv6のみの場合がありますが、プーラー(6543)はIPv4に対応しています。
+    // RenderのようにIPv6未対応の環境では、Supabase管理画面から「Transaction Pooler」のURLを取得して設定してください。
+    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('sslmode=disable')
+        ? false
+        : ((process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase.co')) ||
+            (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase.com')) ||
+            process.env.NODE_ENV === 'production'
+            ? { rejectUnauthorized: false }
+            : false)
 });
 
 // プールエラーの監視
