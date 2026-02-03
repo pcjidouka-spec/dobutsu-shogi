@@ -2,10 +2,10 @@
     "name": "dobutsu-shogi-online",
     "version": "1.0.2",
     "description": "Online Dobutsu Shogi game with WebSocket",
-    "main": "server.js",
+    "main": "server_postgresql.js",
     "scripts": {
-        "start": "node server.js",
-        "start:postgresql": "node server_postgresql.js"
+        "start": "node server_postgresql.js",
+        "start:mysql": "node server.js"
     },
     "dependencies": {
         "dotenv": "^17.2.3",

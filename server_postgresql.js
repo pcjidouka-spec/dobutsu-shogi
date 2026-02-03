@@ -13,7 +13,15 @@ const PORT = process.env.PORT || 3000;
 // PostgreSQL Connection Pool
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    // SupabaseはSSL必須のため、URLにsupabaseが含まれる場合や本番環境ではSSLを有効にする
+    ssl: (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase.co')) || process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
+        : false
+});
+
+// プールエラーの監視
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
 });
 
 // Initialize Database Tables
