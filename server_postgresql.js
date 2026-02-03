@@ -4,6 +4,14 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 const { Pool } = require('pg');
+const dns = require('dns');
+
+// Node 18+ ではデフォルトで IPv6 が優先されるため、
+// IPv6環境が整っていない Render などの環境では ENETUNREACH エラーが発生することがあります。
+// これを回避するために IPv4 を優先するように設定します。
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 const app = express();
 app.use(express.json()); // JSONボディを解析するために必要
