@@ -6,9 +6,11 @@ require('dotenv').config();
 const { Pool } = require('pg');
 const dns = require('dns');
 
-// Node 18+ ではデフォルトで IPv6 が優先されるため、
-// IPv6環境が整っていない Render などの環境では ENETUNREACH エラーが発生することがあります。
-// これを回避するために IPv4 を優先するように設定します。
+// Supabaseプーラー等の自己署名証明書エラーを完全に回避するための設定
+// Render環境での 'self-signed certificate in certificate chain' エラーを解消します
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Node 18+ の IPv6 優先による接続エラー回避
 if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder('ipv4first');
 }
