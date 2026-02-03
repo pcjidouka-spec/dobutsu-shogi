@@ -1,0 +1,61 @@
+🚀 Render + Supabase デプロイ・運用手順
+
+サーバーをAWS (EC2/RDS) から Render + Supabase へ移行した後の、新しいデプロイおよび運用手順です。
+
+---
+
+### 1. コードの更新と反映 (デプロイ)
+
+Renderでは、GitHubリポジトリの特定のブランチ（通常は `main`）にプッシュするだけで、自動的にビルドとデプロイが行われます。
+
+1. **ローカルでコードを修正**
+2. **変更をコミットしてGitHubにプッシュ**
+   ```bash
+   git add .
+   git commit -m "修正内容のメッセージ"
+   git push origin main
+   ```
+3. **Renderダッシュボードで確認**
+   - [Render Dashboard](https://dashboard.render.com/) にアクセス
+   - デプロイログを確認し、`Live` になれば完了です。
+   - 補足: 自動デプロイの設定により、ダウンタイムなしで更新されます。
+
+---
+
+### 2. 環境変数の管理
+
+新しい環境変数や設定変更が必要な場合は、Renderのダッシュボード上で行います。
+
+1. Renderプロジェクトの **Environment** タブを選択
+2. 以下の変数が正しく設定されているか確認
+   - `DATABASE_URL`: Supabaseの接続文字列 (※重要: IPv4接続のためポート 6543 の Pooler URL を使用)
+   - `DEV_PASSWORD`: 開発者モード用のパスワード (`hana`)
+   - `PORT`: `3000` (Renderが自動割り当てする場合もあります)
+   - `NODE_ENV`: `production`
+
+---
+
+### 3. データベースの管理 (Supabase)
+
+データの確認や直接的なSQL実行は、Supabaseの管理画面（SQL Editor）を使用します。
+
+1. [Supabase Dashboard](https://supabase.com/dashboard) にログイン
+2. **Table Editor**: ユーザー一覧(`users`)や対戦履歴(`match_history`)をExcelのように閲覧・編集できます。
+3. **SQL Editor**: 複雑なクエリやテーブル定義の変更（Migration）を実行できます。
+
+---
+
+### 4. ログの確認とトラブルシューティング
+
+不具合が発生した場合は、Renderのログを確認します。
+
+1. Render Dashboard の **Logs** タブを選択
+2. Node.jsの実行ログ（`console.log`等）を確認します。
+   - 注意: Render無料枠は一定時間アクセスがないとスリープ（サスペンド）します。初回アクセス時の起動ログもここで確認できます。
+
+---
+
+💡 **以前の手順 (AWS/EC2) との違い**
+- SSH接続（`ssh -i ...`）は不要になりました。
+- PM2の操作（`pm2 reload`）はRenderが自動で行うため不要です。
+- 全ての操作が「Gitプッシュ」または「Webブラウザ上のダッシュボード」で完結します。
