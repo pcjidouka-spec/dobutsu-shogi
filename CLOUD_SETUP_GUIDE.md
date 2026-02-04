@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS match_history (id SERIAL PRIMARY KEY, player_sente VA
 | `DATABASE_URL` | `postgresql://postgres.[ID]:[PW]@...pooler.supabase.com:6543/postgres?sslmode=no-verify` | ポート6543、末尾にSSL無効化を追加 |
 | `NODE_ENV` | `production` | |
 | `PORT` | `3000` | Renderが別途指定する場合はそちらが優先されます |
-| `DEV_PASSWORD` | `hana` | 任意。開発者モード用 |
+| `DEV_PASSWORD` | `YOUR_SECRET_PASSWORD` | 任意。開発者モード用 |
 | `PGSSLMODE` | `no-verify` | 自己署名証明書エラーを回避するため |
 
 ---

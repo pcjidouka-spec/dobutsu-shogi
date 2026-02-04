@@ -3,77 +3,91 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
+const dns = require('dns');
+
+// Supabaseプーラー等の自己署名証明書エラーを完全に回避するための設定
+// Render環境での 'self-signed certificate in certificate chain' エラーを解消します
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Node 18+ の IPv6 優先による接続エラー回避
+if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 const app = express();
 app.use(express.json()); // JSONボディを解析するために必要
 app.use(express.static(__dirname)); // 静的ファイルの配信
 const PORT = process.env.PORT || 3000;
 
-// MySQL Connection Pool
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+// PostgreSQL Connection Pool
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    // Supabaseの接続（特にプーラー6543）での自己署名証明書エラーを回避するため、
+    // 常時 rejectUnauthorized: false を適用します。
+    ssl: { rejectUnauthorized: false }
+});
+
+console.log('Database pool initialized (SSL verification disabled)');
+
+
+// プールエラーの監視
+pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
 });
 
 // Initialize Database Tables
 async function initDB() {
     try {
-        const connection = await pool.getConnection();
-        console.log('Connected to MySQL database');
+        const client = await pool.connect();
+        console.log('Connected to PostgreSQL database');
 
-        await connection.query(`
+        await client.query(`
             CREATE TABLE IF NOT EXISTS game_settings (
                 setting_key VARCHAR(255) PRIMARY KEY,
                 setting_value TEXT
             )
         `);
 
-        await connection.query(`
+        await client.query(`
             CREATE TABLE IF NOT EXISTS game_logs (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 event_type VARCHAR(255),
                 event_data TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
-        await connection.query(`
+        await client.query(`
             CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 username VARCHAR(255) UNIQUE NOT NULL,
                 rating INT DEFAULT 1500,
                 wins INT DEFAULT 0,
                 losses INT DEFAULT 0,
                 draws INT DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         // 対戦履歴テーブル作成（ランキング用）
-        await connection.query(`
+        await client.query(`
             CREATE TABLE IF NOT EXISTS match_history (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 player_sente VARCHAR(255) NOT NULL,
                 player_gote VARCHAR(255) NOT NULL,
                 winner VARCHAR(50) NOT NULL,
-                played_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
         // Insert default settings if not exists
-        const [rows] = await connection.query('SELECT * FROM game_settings WHERE setting_key = ?', ['maxPlayersPerRoom']);
-        if (rows.length === 0) {
-            await connection.query('INSERT INTO game_settings (setting_key, setting_value) VALUES (?, ?)', ['maxPlayersPerRoom', '2']);
+        const result = await client.query('SELECT * FROM game_settings WHERE setting_key = $1', ['maxPlayersPerRoom']);
+        if (result.rows.length === 0) {
+            await client.query('INSERT INTO game_settings (setting_key, setting_value) VALUES ($1, $2)', ['maxPlayersPerRoom', '2']);
         }
 
-        connection.release();
+        client.release();
     } catch (error) {
         console.error('Error initializing database:', error.message);
     }
@@ -85,7 +99,7 @@ const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-// --- Developer Mode API (MySQL Version) ---
+// --- Developer Mode API (PostgreSQL Version) ---
 
 // Auth Middleware
 const requireAuth = (req, res, next) => {
@@ -111,15 +125,15 @@ app.post('/api/verify-password', (req, res) => {
 // データベース取得 (設定とログを表示)
 app.get('/api/db', requireAuth, async (req, res) => {
     try {
-        const [settings] = await pool.query('SELECT * FROM game_settings');
-        const [logs] = await pool.query('SELECT * FROM game_logs ORDER BY created_at DESC LIMIT 50');
+        const settingsResult = await pool.query('SELECT * FROM game_settings');
+        const logsResult = await pool.query('SELECT * FROM game_logs ORDER BY created_at DESC LIMIT 50');
 
         const dbData = {
-            settings: settings.reduce((acc, row) => {
+            settings: settingsResult.rows.reduce((acc, row) => {
                 acc[row.setting_key] = row.setting_value;
                 return acc;
             }, {}),
-            logs: logs
+            logs: logsResult.rows
         };
         res.json(dbData);
     } catch (error) {
@@ -134,8 +148,8 @@ app.post('/api/db', requireAuth, async (req, res) => {
         if (settings) {
             for (const [key, value] of Object.entries(settings)) {
                 await pool.query(
-                    'INSERT INTO game_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?',
-                    [key, String(value), String(value)]
+                    'INSERT INTO game_settings (setting_key, setting_value) VALUES ($1, $2) ON CONFLICT (setting_key) DO UPDATE SET setting_value = $2',
+                    [key, String(value)]
                 );
             }
             res.send('Settings updated');
@@ -153,8 +167,8 @@ app.post('/api/sql', requireAuth, async (req, res) => {
         const { query } = req.body;
         if (!query) return res.status(400).send('Query is required');
 
-        const [rows, fields] = await pool.query(query);
-        res.json({ rows, fields });
+        const result = await pool.query(query);
+        res.json({ rows: result.rows, fields: result.fields });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -165,8 +179,8 @@ app.post('/api/sql', requireAuth, async (req, res) => {
 // 全ユーザー取得
 app.get('/api/users', requireAuth, async (req, res) => {
     try {
-        const [users] = await pool.query('SELECT * FROM users ORDER BY rating DESC');
-        res.json(users);
+        const result = await pool.query('SELECT * FROM users ORDER BY rating DESC');
+        res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -179,12 +193,12 @@ app.post('/api/users', requireAuth, async (req, res) => {
         if (!username) return res.status(400).json({ error: 'Username is required' });
 
         await pool.query(
-            'INSERT INTO users (username, rating) VALUES (?, ?)',
+            'INSERT INTO users (username, rating) VALUES ($1, $2)',
             [username, rating || 1500]
         );
         res.json({ success: true });
     } catch (error) {
-        if (error.code === 'ER_DUP_ENTRY') {
+        if (error.code === '23505') { // PostgreSQL unique_violation
             res.status(400).json({ error: 'Username already exists' });
         } else {
             res.status(500).json({ error: error.message });
@@ -199,7 +213,7 @@ app.put('/api/users/:id', requireAuth, async (req, res) => {
         const { rating, wins, losses, draws, created_at } = req.body;
 
         await pool.query(
-            'UPDATE users SET rating=?, wins=?, losses=?, draws=?, created_at=? WHERE id=?',
+            'UPDATE users SET rating=$1, wins=$2, losses=$3, draws=$4, created_at=$5 WHERE id=$6',
             [rating, wins, losses, draws, created_at, id]
         );
         res.json({ success: true });
@@ -212,7 +226,7 @@ app.put('/api/users/:id', requireAuth, async (req, res) => {
 app.delete('/api/users/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        await pool.query('DELETE FROM users WHERE id=?', [id]);
+        await pool.query('DELETE FROM users WHERE id=$1', [id]);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -235,7 +249,8 @@ app.get('/api/rankings', async (req, res) => {
     try {
         // --- 1. 通算ランキング (All-Time) ---
         // 既存の users テーブルから累積データを取得
-        const [users] = await pool.query('SELECT username, wins, losses, draws, created_at FROM users');
+        const usersResult = await pool.query('SELECT username, wins, losses, draws, created_at FROM users');
+        const users = usersResult.rows;
 
         const createAllTimeRanking = (type) => {
             return users
@@ -266,7 +281,8 @@ app.get('/api/rankings', async (req, res) => {
 
         // --- 2. 月間ランキング (Monthly) ---
         // match_history から今月のデータを集計
-        const [history] = await pool.query('SELECT * FROM match_history');
+        const historyResult = await pool.query('SELECT * FROM match_history');
+        const history = historyResult.rows;
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -378,7 +394,7 @@ function handleMessage(ws, data) {
 async function registerUser(username) {
     try {
         await pool.query(
-            'INSERT INTO users (username, rating) VALUES (?, 1500) ON DUPLICATE KEY UPDATE username=username',
+            'INSERT INTO users (username, rating) VALUES ($1, 1500) ON CONFLICT (username) DO NOTHING',
             [username]
         );
         console.log(`User registered/verified: ${username}`);
@@ -392,19 +408,19 @@ async function updateGameStats(winner, senteName, goteName) {
     try {
         // ユーザー戦績更新
         if (winner === 'draw') {
-            await pool.query('UPDATE users SET draws = draws + 1 WHERE username = ?', [senteName]);
-            await pool.query('UPDATE users SET draws = draws + 1 WHERE username = ?', [goteName]);
+            await pool.query('UPDATE users SET draws = draws + 1 WHERE username = $1', [senteName]);
+            await pool.query('UPDATE users SET draws = draws + 1 WHERE username = $1', [goteName]);
         } else if (winner === 'sente') {
-            await pool.query('UPDATE users SET wins = wins + 1 WHERE username = ?', [senteName]);
-            await pool.query('UPDATE users SET losses = losses + 1 WHERE username = ?', [goteName]);
+            await pool.query('UPDATE users SET wins = wins + 1 WHERE username = $1', [senteName]);
+            await pool.query('UPDATE users SET losses = losses + 1 WHERE username = $1', [goteName]);
         } else if (winner === 'gote') {
-            await pool.query('UPDATE users SET losses = losses + 1 WHERE username = ?', [senteName]);
-            await pool.query('UPDATE users SET wins = wins + 1 WHERE username = ?', [goteName]);
+            await pool.query('UPDATE users SET losses = losses + 1 WHERE username = $1', [senteName]);
+            await pool.query('UPDATE users SET wins = wins + 1 WHERE username = $1', [goteName]);
         }
 
         // 対戦履歴保存
         await pool.query(
-            'INSERT INTO match_history (player_sente, player_gote, winner) VALUES (?, ?, ?)',
+            'INSERT INTO match_history (player_sente, player_gote, winner) VALUES ($1, $2, $3)',
             [senteName, goteName, winner]
         );
 
@@ -786,7 +802,6 @@ function checkWinCondition(room) {
 
     // ライオンが相手陣地の最奥に入ったかチェック
     // 先手のライオンが後手陣地の最奥（row=0）に入った場合
-    // 初期配置では先手のライオンはrow=3（先手の陣地の最奥）にいるので、row=0に入った場合は敵陣地に入ったことになる
     if (senteLionPos && senteLionPos.row === 0) {
         // 次の相手（後手）の番でライオンが取られる可能性をチェック
         const opponentMoves = getAllPossibleMoves(board, room.captured, 'gote');
@@ -803,7 +818,6 @@ function checkWinCondition(room) {
     }
 
     // 後手のライオンが先手陣地の最奥（row=3）に入った場合
-    // 初期配置では後手のライオンはrow=0（後手の陣地の最奥）にいるので、row=3に入った場合は敵陣地に入ったことになる
     if (goteLionPos && goteLionPos.row === 3) {
         // 次の相手（先手）の番でライオンが取られる可能性をチェック
         const opponentMoves = getAllPossibleMoves(board, room.captured, 'sente');
@@ -885,17 +899,19 @@ function generateRoomId() {
     return Math.random().toString(36).substring(2, 9);
 }
 
-console.log('Dobutsu Shogi WebSocket server initialized');
+console.log('Dobutsu Shogi WebSocket server initialized (PostgreSQL version)');
 
 // Graceful Shutdown Logic
 const shutdown = async () => {
     console.log('Received kill signal, shutting down gracefully');
     server.close(() => {
         console.log('Closed out remaining connections');
-        pool.end(err => {
-            if (err) console.error('Error closing database pool', err);
-            else console.log('Database pool closed');
+        pool.end().then(() => {
+            console.log('Database pool closed');
             process.exit(0);
+        }).catch(err => {
+            console.error('Error closing database pool', err);
+            process.exit(1);
         });
     });
 

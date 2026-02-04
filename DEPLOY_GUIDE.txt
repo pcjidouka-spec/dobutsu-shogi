@@ -29,7 +29,7 @@ Renderでは、GitHubリポジトリの特定のブランチ（通常は `main`�
 1. Renderプロジェクトの **Environment** タブを選択
 2. 以下の変数が正しく設定されているか確認
    - `DATABASE_URL`: Supabaseの接続文字列 (※重要: IPv4接続のためポート 6543 の Pooler URL を使用)
-   - `DEV_PASSWORD`: 開発者モード用のパスワード (`hana`)
+   - `DEV_PASSWORD`: 開発者モード用のパスワード (`YOUR_SECRET_PASSWORD`)
    - `PORT`: `3000` (Renderが自動割り当てする場合もあります)
    - `NODE_ENV`: `production`
 

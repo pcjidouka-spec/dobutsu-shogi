@@ -135,7 +135,7 @@ ON CONFLICT (setting_key) DO NOTHING;
    ```
    # 重要: IPv4対応のため「Transaction Pooler (ポート 6543)」のURLを使用してください
    DATABASE_URL=postgresql://postgres.[PROJ_ID]:[PASSWORD]@aws-x-xxxx-x.pooler.supabase.com:6543/postgres?sslmode=require
-   DEV_PASSWORD=hana
+   DEV_PASSWORD=YOUR_SECRET_PASSWORD
    PORT=3000
    NODE_ENV=production
    ```
