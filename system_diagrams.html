@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>どうぶつ将棋 システム設計図一覧</title>
+    <!-- Mermaid.js CDN -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+    </script>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f6f8;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2c3e50;
+        }
+
+        .diagram-section {
+            background: white;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 10px;
+            margin-top: 0;
+            color: #34495e;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 10px;
+        }
+
+        p.desc {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>どうぶつ将棋 システム設計図</h1>
+
+        <!-- 8. アーキテクチャ・データフロー図 (NEW) -->
+        <div class="diagram-section" style="border: 2px solid #3498db;">
+            <h2>8. システムアーキテクチャ・データフロー図 (UI-Session-DB連携)</h2>
+            <p class="desc">UI、メモリセッション、データベースの3層構造とデータの流れ</p>
+            <div class="mermaid">
+                flowchart LR
+                subgraph Client_Layer ["UI Layer (Browser)"]
+                direction TB
+                DOM["DOM Elements<br>(Board/Pieces)"]
+                WaitView["Waiting Screen"]
+                RankingView["Ranking View"]
+                end
+
+                subgraph Server_Layer ["Server Session Layer (In-Memory)"]
+                direction TB
+                WS_Conn["WebSocket Connection<br>(Session State)"]
+                Room_Mem["Game Room Object<br>(Board State / Turn)"]
+                Logic["Game Logic<br>(Validation)"]
+                end
+
+                subgraph DB_Layer ["Database Layer (Persistence)"]
+                direction TB
+                Users_TBl[("Users Table<br>(Stats)")]
+                History_TBl[("History Table<br>(Logs)")]
+                end
+
+                %% Real-time Game Loop
+                DOM <-->|1. Real-time Move/Update (WebSocket)| WS_Conn
+                    WS_Conn <-->|2. Update State| Room_Mem
+                        Room_Mem <-->|3. Validate Move| Logic
+
+                            %% Persistence (Only on Game Over)
+                            Room_Mem -.->|4. Game Over: Save Result| Users_TBl
+                            Room_Mem -.->|5. Game Over: Save Log| History_TBl
+
+                            %% REST API (Read Only)
+                            RankingView <==>|6. Update Ranking (HTTP GET)| Users_TBl
+                                RankingView <==>|7. Fetch History (HTTP GET)| History_TBl
+
+                                    %% Styling
+                                    style Client_Layer fill:#e1f5fe,stroke:#01579b
+                                    style Server_Layer fill:#fff3e0,stroke:#e65100
+                                    style DB_Layer fill:#e8f5e9,stroke:#1b5e20
+            </div>
+        </div>
+
+        <!-- 1. フローチャート -->
+        <div class="diagram-section">
+            <h2>1. フローチャート (ゲーム進行フロー)</h2>
+            <p class="desc">対局開始から終了までのプレイヤーアクションとサーバー処理の流れ</p>
+            <div class="mermaid">
+                flowchart TD
+                A[Start Game] --> B{Matching Request}
+                B -->|Waiting| C[Wait in Lobby]
+                B -->|Matched| D[Create Room]
+
+                D --> E{Turn Check}
+                E -->|My Turn| F[Player Input]
+                E -->|Opponent Turn| G[Wait for Opponent]
+
+                F --> H{Validation}
+                H -->|Invalid| F
+                H -->|Valid| I[Update Board]
+
+                I --> J{Win Condition?}
+                J -->|Lion Captured/Try| K[Game Over - Win/Loss]
+                J -->|Repetition| L[Game Over - Draw]
+                J -->|Continue| M[Switch Turn]
+
+                M --> E
+                G --> N[Receive Opponent Move]
+                N --> E
+
+                K --> O[Update Stats & History]
+                L --> O
+                O --> P[End / Rematch]
+            </div>
+        </div>
+
+        <!-- 2. シーケンス図 -->
+        <div class="diagram-section">
+            <h2>2. シーケンス図 (駒移動時の通信)</h2>
+            <p class="desc">WebSocketメッセージのやり取り</p>
+            <div class="mermaid">
+                sequenceDiagram
+                participant P1 as Player (Sente)
+                participant S as Server
+                participant P2 as Opponent (Gote)
+                participant DB as Database
+
+                P1->>S: WS: {"type": "move", ...}
+                activate S
+                S->>S: Validate & Update Board
+
+                alt Valid Move
+                S->>P1: WS: {"type": "move", ...}
+                S->>P2: WS: {"type": "move", ...}
+                else Game Over
+                S->>DB: Update Users & Insert Match History
+                S->>P1: WS: {"type": "gameOver", ...}
+                S->>P2: WS: {"type": "gameOver", ...}
+                end
+                deactivate S
+            </div>
+        </div>
+
+        <!-- 3. ガントチャート - シンプル化 -->
+        <div class="diagram-section">
+            <h2>3. ガントチャート (開発・移行スケジュール)</h2>
+            <div class="mermaid">
+                gantt
+                title System Migration Plan
+                dateFormat YYYY-MM-DD
+                section Phases
+                Codebase Analysis :done, des1, 2024-01-01, 2d
+                Database Schema Design :done, des2, 2024-01-03, 1d
+                Implementation :active, imp1, 2024-01-04, 5d
+                Testing & Release : test1, after imp1, 3d
+            </div>
+        </div>
+
+        <!-- 4. 状態遷移図 -->
+        <div class="diagram-section">
+            <h2>4. 状態遷移図 (ゲームルームステート)</h2>
+            <div class="mermaid">
+                stateDiagram-v2
+                [*] --> Waiting : user joins
+                Waiting --> Playing : matched
+
+                state Playing {
+                [*] --> SenteTurn
+                SenteTurn --> GoteTurn
+                GoteTurn --> SenteTurn
+                }
+
+                Playing --> Finished : Game Over
+                Finished --> RematchReq : Request Rematch
+                RematchReq --> Playing : Accepted
+                RematchReq --> [*] : Exit
+            </div>
+        </div>
+
+        <!-- 5. クラス図 -->
+        <div class="diagram-section">
+            <h2>5. クラス図 (主要クラス構成)</h2>
+            <div class="mermaid">
+                classDiagram
+                class DobutsuShogi {
+                +board: Array
+                +currentPlayer: String
+                +initBoard()
+                +makeMove()
+                }
+                class OnlineGameUI {
+                +game: DobutsuShogi
+                +connectToServer()
+                +handleServerMessage()
+                }
+                OnlineGameUI *-- DobutsuShogi
+            </div>
+        </div>
+
+        <!-- 6. ER図 - シンプル化 -->
+        <div class="diagram-section">
+            <h2>6. ER図 (データベース構造)</h2>
+            <div class="mermaid">
+                erDiagram
+                users {
+                int id PK
+                string username UK
+                int wins
+                int losses
+                }
+                match_history {
+                int id PK
+                string winner
+                timestamp played_at
+                }
+                users ||--o{ match_history : "participates"
+            </div>
+        </div>
+
+        <!-- 7. セッション変数・メモリ構造図 -->
+        <div class="diagram-section">
+            <h2>7. セッション変数・メモリ構造図 (WebSocket相互参照)</h2>
+            <div class="mermaid">
+                classDiagram
+                title In-Memory Session State (Node.js Heap)
+
+                class ServerGlobal {
+                +Map rooms
+                +Array waitingPlayers
+                }
+
+                class WebSocketContext {
+                +string playerName
+                +string roomId
+                }
+
+                class RoomObject {
+                +string id
+                +players s/g
+                }
+
+                ServerGlobal --o WebSocketContext : waiting
+                ServerGlobal *-- RoomObject : rooms
+
+                RoomObject o-- WebSocketContext : players
+                WebSocketContext --> RoomObject : roomId
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+erDiagram
+    users {
+        int id PK
+        string username
+        int rating
+        int wins
+        int losses
+        int draws
+        timestamp created_at
+    }
+    match_history {
+        int id PK
+        string player_sente
+        string player_gote
+        string winner
+        timestamp played_at
+    }
+    game_settings {
+        string setting_key PK
+        string setting_value
+    }
+    game_logs {
+        int id PK
+        string event_type
+        string event_data
+        timestamp created_at
+    }
+    users ||--o{ match_history : plays

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database ER Diagram</title>
+    <!-- Mermaid.js CDN -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 30px;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Database Structure (ER Diagram)</h1>
+        <div class="mermaid">
+            erDiagram
+            users {
+            int id PK
+            string username UK
+            int rating
+            int wins
+            int losses
+            int draws
+            timestamp created_at
+            }
+            match_history {
+            int id PK
+            string player_sente
+            string player_gote
+            string winner
+            timestamp played_at
+            }
+            game_settings {
+            string setting_key PK
+            string setting_value
+            }
+            game_logs {
+            int id PK
+            string event_type
+            string event_data
+            timestamp created_at
+            }
+            users ||--o{ match_history : "participates (sente/gote)"
+        </div>
+    </div>
+</body>
+
+</html>
