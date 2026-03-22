@@ -58,6 +58,21 @@ body {
 .howto-link-container {
     margin-top: 20px;
     margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.timetable-link {
+    color: #1a73e8;
+    border-color: #1a73e8;
+}
+
+.timetable-link:hover {
+    background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+    color: white;
+    box-shadow: 0 5px 15px rgba(26, 115, 232, 0.3);
 }
 
 .howto-link {
