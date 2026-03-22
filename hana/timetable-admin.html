@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>時刻表データ管理</title>
+  <link rel="stylesheet" href="https://unpkg.com/ress/dist/ress.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: "Noto Sans JP", sans-serif;
+      background: #f0f4f8;
+      color: #2d3748;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #37474f, #263238);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .header h1 { font-size: 1.1rem; font-weight: 700; }
+    .header p  { font-size: 0.75rem; opacity: 0.75; margin-top: 0.1rem; }
+
+    .main { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+    /* カード共通 */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* ステップ番号 */
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      background: #1a73e8;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* フォーマット説明 */
+    .format-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .format-table th {
+      background: #e8f0fe;
+      color: #1a73e8;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border: 1px solid #c5cae9;
+    }
+    .format-table td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #e0e0e0;
+      vertical-align: top;
+    }
+    .format-table tr:nth-child(even) td { background: #fafafa; }
+
+    .required-badge {
+      display: inline-block;
+      background: #ffebee;
+      color: #c62828;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      padding: 0.1rem 0.4rem;
+      font-weight: 700;
+    }
+    .optional-badge {
+      display: inline-block;
+      background: #f3f4f6;
+      color: #616161;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      padding: 0.1rem 0.4rem;
+    }
+
+    .sample-csv {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: monospace;
+      font-size: 0.8125rem;
+      color: #37474f;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-bottom: 0.5rem;
+    }
+
+    .dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .dl-btn:hover { background: #c5cae9; }
+
+    /* ファイルドロップゾーン */
+    .drop-zone {
+      border: 2px dashed #b0bec5;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fafafa;
+      margin-bottom: 1rem;
+    }
+    .drop-zone.drag-over {
+      border-color: #1a73e8;
+      background: #e8f0fe;
+    }
+    .drop-zone .drop-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .drop-zone p { color: #757575; font-size: 0.9375rem; }
+    .drop-zone strong { color: #1a73e8; }
+    #fileInput { display: none; }
+
+    .file-selected {
+      display: none;
+      background: #e8f5e9;
+      border: 1.5px solid #a5d6a7;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      color: #2e7d32;
+      margin-bottom: 1rem;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* アップロードボタン */
+    .upload-btn {
+      width: 100%;
+      padding: 0.9rem;
+      background: linear-gradient(135deg, #1a73e8, #0d47a1);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .upload-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .upload-btn:hover:not(:disabled) { opacity: 0.9; }
+
+    /* プログレス */
+    .progress-bar-wrap {
+      display: none;
+      background: #e0e0e0;
+      border-radius: 99px;
+      height: 6px;
+      margin: 0.75rem 0;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #1a73e8, #42a5f5);
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 99px;
+    }
+
+    /* 結果 */
+    .result-box {
+      display: none;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-top: 0.75rem;
+      font-size: 0.9375rem;
+    }
+    .result-box.success {
+      background: #e8f5e9;
+      border: 1.5px solid #a5d6a7;
+      color: #2e7d32;
+    }
+    .result-box.error {
+      background: #ffebee;
+      border: 1.5px solid #ef9a9a;
+      color: #c62828;
+    }
+
+    /* プレビューテーブル */
+    .preview-wrap {
+      display: none;
+      overflow-x: auto;
+      margin-top: 0.75rem;
+    }
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      min-width: 480px;
+    }
+    .preview-table th {
+      background: #37474f;
+      color: #fff;
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .preview-table td {
+      padding: 0.4rem 0.6rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .preview-table tr:nth-child(even) td { background: #f5f5f5; }
+
+    /* 現在のデータ件数 */
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-radius: 99px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+
+    /* 注意書き */
+    .warn-box {
+      background: #fff8e1;
+      border: 1.5px solid #ffe082;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: #f57f17;
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <span style="font-size:1.5rem">⚙️</span>
+  <div>
+    <h1>時刻表データ管理</h1>
+    <p>CSV / Excel をアップロードして時刻表を更新します</p>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- 現在のデータ状況 -->
+  <div class="card">
+    <h2><span class="step-num">📊</span> 現在の登録状況</h2>
+    <p style="margin-bottom:0.75rem">Supabase に保存されている時刻表データ：</p>
+    <span class="count-badge" id="countBadge">読み込み中...</span>
+    <button class="dl-btn" style="margin-left:0.75rem" onclick="loadCurrentData()">🔄 更新</button>
+    <div class="preview-wrap" id="currentPreview">
+      <table class="preview-table" id="currentTable">
+        <thead><tr>
+          <th>路線</th><th>出発地</th><th>目的地</th><th>乗り場</th><th>出発</th><th>到着</th>
+        </tr></thead>
+        <tbody id="currentTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Step1: CSVフォーマット -->
+  <div class="card">
+    <h2><span class="step-num">1</span> CSVフォーマット</h2>
+    <p style="font-size:0.875rem;color:#616161;margin-bottom:0.75rem">
+      Excel で以下の列を作成し、「CSV UTF-8 (コンマ区切り)」で保存してください。<br>
+      .xlsx のまま直接アップロードも可能です。
+    </p>
+
+    <table class="format-table">
+      <thead><tr>
+        <th>列名</th><th>内容</th><th>例</th><th>必須</th>
+      </tr></thead>
+      <tbody>
+        <tr><td><code>route</code></td><td>路線名</td><td>1系統</td><td><span class="required-badge">必須</span></td></tr>
+        <tr><td><code>from</code></td><td>出発地（停留所名）</td><td>中央駅</td><td><span class="required-badge">必須</span></td></tr>
+        <tr><td><code>to</code></td><td>目的地（停留所名）</td><td>北口バスターミナル</td><td><span class="required-badge">必須</span></td></tr>
+        <tr><td><code>platform</code></td><td>乗り場</td><td>1番のりば</td><td><span class="optional-badge">任意</span></td></tr>
+        <tr><td><code>dep</code></td><td>出発時刻（HH:MM）</td><td>07:30</td><td><span class="required-badge">必須</span></td></tr>
+        <tr><td><code>arr</code></td><td>到着時刻（HH:MM）</td><td>07:48</td><td><span class="required-badge">必須</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="sample-csv" id="sampleCsv">route,from,to,platform,dep,arr
+1系統,中央駅,北口バスターミナル,1番のりば,07:00,07:18
+1系統,中央駅,北口バスターミナル,1番のりば,07:30,07:48
+1系統,北口バスターミナル,中央駅,3番のりば,07:35,07:53
+2系統,中央駅,市民病院前,2番のりば,08:00,08:24</div>
+
+    <button class="dl-btn" onclick="downloadSample()">⬇ サンプルCSVをダウンロード</button>
+  </div>
+
+  <!-- Step2: アップロード -->
+  <div class="card">
+    <h2><span class="step-num">2</span> ファイルをアップロード</h2>
+
+    <div class="warn-box" style="margin-bottom:1rem">
+      ⚠️ アップロードすると<strong>現在のデータはすべて置き換わります</strong>。<br>
+      既存データを保持したい場合は先にバックアップしてください。
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">📂</div>
+      <p><strong>クリックしてファイルを選択</strong><br>または、ここにドラッグ＆ドロップ</p>
+      <p style="font-size:0.8125rem;margin-top:0.4rem;color:#9e9e9e">.csv / .xlsx / .xls に対応</p>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+
+    <div class="file-selected" id="fileSelected">
+      <span>✅</span><span id="fileName"></span>
+    </div>
+
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <button class="upload-btn" id="uploadBtn" disabled onclick="doUpload()">
+      ⬆ アップロードして時刻表を更新
+    </button>
+
+    <div class="result-box" id="resultBox"></div>
+  </div>
+
+  <!-- リンク -->
+  <div style="text-align:center;margin-top:1rem">
+    <a href="/hana/bus-search.html" style="color:#1a73e8;font-weight:700;text-decoration:none">
+      🚌 バス検索ページで確認する →
+    </a>
+  </div>
+
+</main>
+
+<script>
+  let selectedFile = null;
+
+  // ===== ドロップゾーン =====
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) setFile(fileInput.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    document.getElementById('fileName').textContent = `${file.name}（${(file.size / 1024).toFixed(1)} KB）`;
+    document.getElementById('fileSelected').style.display = 'flex';
+    document.getElementById('uploadBtn').disabled = false;
+    document.getElementById('resultBox').style.display = 'none';
+  }
+
+  // ===== アップロード処理 =====
+  async function doUpload() {
+    if (!selectedFile) return;
+    const btn = document.getElementById('uploadBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    const resultBox = document.getElementById('resultBox');
+
+    btn.disabled = true;
+    progressWrap.style.display = 'block';
+    progressBar.style.width = '30%';
+    resultBox.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      progressBar.style.width = '60%';
+      const res = await fetch('/api/timetable/upload', {
+        method: 'POST',
+        body: formData
+      });
+      progressBar.style.width = '100%';
+      const data = await res.json();
+
+      if (data.ok) {
+        resultBox.className = 'result-box success';
+        resultBox.innerHTML = `✅ <strong>${data.inserted} 件</strong>のデータを登録しました。<br>
+          <a href="/hana/bus-search.html" style="color:#1b5e20;font-weight:700">バス検索ページで確認 →</a>`;
+        loadCurrentData();
+      } else {
+        resultBox.className = 'result-box error';
+        resultBox.innerHTML = `❌ エラー: ${data.error}`;
+      }
+    } catch (err) {
+      resultBox.className = 'result-box error';
+      resultBox.innerHTML = `❌ 通信エラー: ${err.message}`;
+    }
+
+    resultBox.style.display = 'block';
+    btn.disabled = false;
+    setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 800);
+  }
+
+  // ===== 現在のデータ読み込み =====
+  async function loadCurrentData() {
+    try {
+      const res = await fetch('/api/timetable');
+      const data = await res.json();
+      const badge = document.getElementById('countBadge');
+      if (!data.ok || data.rows.length === 0) {
+        badge.textContent = '登録データなし（ダミーデータを使用中）';
+        document.getElementById('currentPreview').style.display = 'none';
+        return;
+      }
+      badge.textContent = `${data.rows.length} 件登録済み`;
+      const tbody = document.getElementById('currentTbody');
+      tbody.innerHTML = data.rows.slice(0, 50).map(r => `
+        <tr>
+          <td>${r.route}</td>
+          <td>${r.from_stop}</td>
+          <td>${r.to_stop}</td>
+          <td>${r.platform || '-'}</td>
+          <td>${r.dep_time}</td>
+          <td>${r.arr_time}</td>
+        </tr>`).join('');
+      if (data.rows.length > 50) {
+        tbody.innerHTML += `<tr><td colspan="6" style="color:#9e9e9e;text-align:center">… 他 ${data.rows.length - 50} 件（省略）</td></tr>`;
+      }
+      document.getElementById('currentPreview').style.display = 'block';
+    } catch {
+      document.getElementById('countBadge').textContent = 'サーバー接続エラー';
+    }
+  }
+
+  // ===== サンプルCSVダウンロード =====
+  function downloadSample() {
+    const csv = document.getElementById('sampleCsv').textContent;
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'timetable_sample.csv';
+    a.click();
+  }
+
+  // 初期ロード
+  loadCurrentData();
+</script>
+</body>
+</html>

@@ -3,6 +3,8 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const multer = require('multer');
+const XLSX = require('xlsx');
 const { Pool } = require('pg');
 const dns = require('dns');
 
@@ -78,6 +80,20 @@ async function initDB() {
                 player_gote VARCHAR(255) NOT NULL,
                 winner VARCHAR(50) NOT NULL,
                 played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // 時刻表テーブル
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS timetable (
+                id SERIAL PRIMARY KEY,
+                route VARCHAR(255) NOT NULL,
+                from_stop VARCHAR(255) NOT NULL,
+                to_stop VARCHAR(255) NOT NULL,
+                platform VARCHAR(255),
+                dep_time VARCHAR(10) NOT NULL,
+                arr_time VARCHAR(10) NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
 
@@ -900,6 +916,97 @@ function generateRoomId() {
 }
 
 console.log('Dobutsu Shogi WebSocket server initialized (PostgreSQL version)');
+
+// ============================================================
+//  時刻表 API
+// ============================================================
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// GET /api/timetable?from=出発地&to=目的地
+// from/to 未指定の場合は全件返す
+app.get('/api/timetable', async (req, res) => {
+    try {
+        const { from, to } = req.query;
+        let query = 'SELECT * FROM timetable';
+        const params = [];
+        if (from && to) {
+            query += ' WHERE from_stop = $1 AND to_stop = $2 ORDER BY dep_time';
+            params.push(from, to);
+        } else {
+            query += ' ORDER BY from_stop, to_stop, dep_time';
+        }
+        const result = await pool.query(query, params);
+        res.json({ ok: true, rows: result.rows });
+    } catch (err) {
+        console.error('GET /api/timetable error:', err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+// GET /api/timetable/stops  ─ 停留所一覧を返す
+app.get('/api/timetable/stops', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT DISTINCT from_stop AS stop FROM timetable UNION SELECT DISTINCT to_stop FROM timetable ORDER BY stop'
+        );
+        res.json({ ok: true, stops: result.rows.map(r => r.stop) });
+    } catch (err) {
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
+
+// POST /api/timetable/upload  ─ CSV / Excel をアップロードして全件置き換え
+// CSV ヘッダー: route,from,to,platform,dep,arr
+app.post('/api/timetable/upload', upload.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ ok: false, error: 'ファイルが選択されていません' });
+
+    try {
+        // xlsx は CSV も読めるので共通処理
+        const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+        // バリデーション
+        const required = ['route', 'from', 'to', 'dep', 'arr'];
+        if (rows.length === 0) return res.status(400).json({ ok: false, error: 'データが空です' });
+        const missingCols = required.filter(c => !(c in rows[0]));
+        if (missingCols.length > 0) {
+            return res.status(400).json({ ok: false, error: `必須列が不足: ${missingCols.join(', ')}` });
+        }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query('DELETE FROM timetable');
+            for (const row of rows) {
+                await client.query(
+                    `INSERT INTO timetable (route, from_stop, to_stop, platform, dep_time, arr_time)
+                     VALUES ($1,$2,$3,$4,$5,$6)`,
+                    [
+                        String(row.route).trim(),
+                        String(row.from).trim(),
+                        String(row.to).trim(),
+                        String(row.platform || '').trim(),
+                        String(row.dep).trim(),
+                        String(row.arr).trim()
+                    ]
+                );
+            }
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+
+        res.json({ ok: true, inserted: rows.length });
+    } catch (err) {
+        console.error('POST /api/timetable/upload error:', err.message);
+        res.status(500).json({ ok: false, error: err.message });
+    }
+});
 
 // Graceful Shutdown Logic
 const shutdown = async () => {

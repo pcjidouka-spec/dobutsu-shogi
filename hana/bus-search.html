@@ -494,11 +494,6 @@
         <div class="select-wrapper">
           <select id="departure">
             <option value="">-- 出発地を選択 --</option>
-            <option value="中央駅">中央駅</option>
-            <option value="北口バスターミナル">北口バスターミナル</option>
-            <option value="市民病院前">市民病院前</option>
-            <option value="公園通り">公園通り</option>
-            <option value="南駅">南駅</option>
           </select>
         </div>
       </div>
@@ -517,11 +512,6 @@
         <div class="select-wrapper">
           <select id="destination">
             <option value="">-- 目的地を選択 --</option>
-            <option value="中央駅">中央駅</option>
-            <option value="北口バスターミナル">北口バスターミナル</option>
-            <option value="市民病院前">市民病院前</option>
-            <option value="公園通り">公園通り</option>
-            <option value="南駅">南駅</option>
           </select>
         </div>
       </div>
@@ -561,144 +551,43 @@
 
   <script>
     // =============================================
-    //  ダミー時刻表データ
-    //  実運用では CSV / JSON API に差し替えてください
+    //  ダミー時刻表データ（APIにデータがない場合のフォールバック）
     // =============================================
-    const TIMETABLE = [
-      // 中央駅 → 北口バスターミナル
+    const TIMETABLE_FALLBACK = [
       { route: "1系統", from: "中央駅", to: "北口バスターミナル", platform: "1番のりば", departures: [
-        { dep: "06:10", arr: "06:28" },
-        { dep: "06:40", arr: "06:58" },
-        { dep: "07:00", arr: "07:18" },
-        { dep: "07:15", arr: "07:33" },
-        { dep: "07:30", arr: "07:48" },
-        { dep: "07:45", arr: "08:03" },
-        { dep: "08:00", arr: "08:20" },
-        { dep: "08:20", arr: "08:40" },
-        { dep: "08:40", arr: "09:00" },
-        { dep: "09:00", arr: "09:18" },
-        { dep: "09:30", arr: "09:48" },
-        { dep: "10:00", arr: "10:18" },
-        { dep: "10:30", arr: "10:48" },
-        { dep: "11:00", arr: "11:18" },
-        { dep: "11:30", arr: "11:48" },
-        { dep: "12:00", arr: "12:18" },
-        { dep: "12:30", arr: "12:48" },
-        { dep: "13:00", arr: "13:18" },
-        { dep: "14:00", arr: "14:18" },
-        { dep: "15:00", arr: "15:18" },
-        { dep: "16:00", arr: "16:18" },
-        { dep: "17:00", arr: "17:20" },
-        { dep: "17:30", arr: "17:52" },
-        { dep: "18:00", arr: "18:22" },
-        { dep: "18:30", arr: "18:48" },
-        { dep: "19:00", arr: "19:18" },
-        { dep: "20:00", arr: "20:18" },
-        { dep: "21:00", arr: "21:18" },
-        { dep: "22:00", arr: "22:18" },
+        { dep: "06:10", arr: "06:28" },{ dep: "06:40", arr: "06:58" },{ dep: "07:00", arr: "07:18" },
+        { dep: "07:15", arr: "07:33" },{ dep: "07:30", arr: "07:48" },{ dep: "07:45", arr: "08:03" },
+        { dep: "08:00", arr: "08:20" },{ dep: "08:30", arr: "08:50" },{ dep: "09:00", arr: "09:18" },
+        { dep: "10:00", arr: "10:18" },{ dep: "11:00", arr: "11:18" },{ dep: "12:00", arr: "12:18" },
+        { dep: "13:00", arr: "13:18" },{ dep: "15:00", arr: "15:18" },{ dep: "17:00", arr: "17:20" },
+        { dep: "18:00", arr: "18:22" },{ dep: "19:00", arr: "19:18" },{ dep: "21:00", arr: "21:18" },
       ]},
-
-      // 北口バスターミナル → 中央駅
       { route: "1系統（折り返し）", from: "北口バスターミナル", to: "中央駅", platform: "3番のりば", departures: [
-        { dep: "06:35", arr: "06:53" },
-        { dep: "07:05", arr: "07:23" },
-        { dep: "07:20", arr: "07:38" },
-        { dep: "07:35", arr: "07:53" },
-        { dep: "08:00", arr: "08:20" },
-        { dep: "08:30", arr: "08:50" },
-        { dep: "09:05", arr: "09:23" },
-        { dep: "09:35", arr: "09:53" },
-        { dep: "10:05", arr: "10:23" },
-        { dep: "11:05", arr: "11:23" },
-        { dep: "12:05", arr: "12:23" },
-        { dep: "13:05", arr: "13:23" },
-        { dep: "14:05", arr: "14:23" },
-        { dep: "15:05", arr: "15:23" },
-        { dep: "16:05", arr: "16:23" },
-        { dep: "17:05", arr: "17:25" },
-        { dep: "17:35", arr: "17:57" },
-        { dep: "18:05", arr: "18:27" },
-        { dep: "19:05", arr: "19:23" },
-        { dep: "20:05", arr: "20:23" },
-        { dep: "21:05", arr: "21:23" },
-        { dep: "22:05", arr: "22:23" },
+        { dep: "07:05", arr: "07:23" },{ dep: "08:00", arr: "08:20" },{ dep: "09:05", arr: "09:23" },
+        { dep: "10:05", arr: "10:23" },{ dep: "11:05", arr: "11:23" },{ dep: "12:05", arr: "12:23" },
+        { dep: "13:05", arr: "13:23" },{ dep: "15:05", arr: "15:23" },{ dep: "17:05", arr: "17:25" },
+        { dep: "18:05", arr: "18:27" },{ dep: "19:05", arr: "19:23" },{ dep: "21:05", arr: "21:23" },
       ]},
-
-      // 中央駅 → 市民病院前
       { route: "2系統", from: "中央駅", to: "市民病院前", platform: "2番のりば", departures: [
-        { dep: "07:00", arr: "07:22" },
-        { dep: "08:00", arr: "08:24" },
-        { dep: "09:00", arr: "09:22" },
-        { dep: "10:00", arr: "10:22" },
-        { dep: "11:00", arr: "11:22" },
-        { dep: "12:00", arr: "12:22" },
-        { dep: "13:00", arr: "13:22" },
-        { dep: "14:00", arr: "14:22" },
-        { dep: "15:00", arr: "15:22" },
-        { dep: "16:00", arr: "16:22" },
-        { dep: "17:00", arr: "17:25" },
-        { dep: "18:00", arr: "18:25" },
-        { dep: "19:00", arr: "19:22" },
-        { dep: "20:00", arr: "20:22" },
+        { dep: "08:00", arr: "08:24" },{ dep: "10:00", arr: "10:22" },{ dep: "12:00", arr: "12:22" },
+        { dep: "14:00", arr: "14:22" },{ dep: "16:00", arr: "16:22" },{ dep: "18:00", arr: "18:25" },
       ]},
-
-      // 市民病院前 → 中央駅
       { route: "2系統（折り返し）", from: "市民病院前", to: "中央駅", platform: "病院バス停", departures: [
-        { dep: "07:30", arr: "07:52" },
-        { dep: "08:30", arr: "08:54" },
-        { dep: "09:30", arr: "09:52" },
-        { dep: "10:30", arr: "10:52" },
-        { dep: "11:30", arr: "11:52" },
-        { dep: "12:30", arr: "12:52" },
-        { dep: "13:30", arr: "13:52" },
-        { dep: "14:30", arr: "14:52" },
-        { dep: "15:30", arr: "15:52" },
-        { dep: "16:30", arr: "16:52" },
-        { dep: "17:30", arr: "17:55" },
-        { dep: "18:30", arr: "18:55" },
-        { dep: "19:30", arr: "19:52" },
+        { dep: "08:30", arr: "08:54" },{ dep: "10:30", arr: "10:52" },{ dep: "12:30", arr: "12:52" },
+        { dep: "14:30", arr: "14:52" },{ dep: "16:30", arr: "16:52" },{ dep: "18:30", arr: "18:55" },
       ]},
-
-      // 公園通り → 南駅
       { route: "3系統", from: "公園通り", to: "南駅", platform: "公園通りバス停", departures: [
-        { dep: "06:50", arr: "07:10" },
-        { dep: "07:20", arr: "07:40" },
-        { dep: "07:50", arr: "08:10" },
-        { dep: "08:20", arr: "08:40" },
-        { dep: "09:00", arr: "09:20" },
-        { dep: "10:00", arr: "10:20" },
-        { dep: "11:00", arr: "11:20" },
-        { dep: "12:00", arr: "12:20" },
-        { dep: "13:00", arr: "13:20" },
-        { dep: "14:00", arr: "14:20" },
-        { dep: "15:00", arr: "15:20" },
-        { dep: "16:00", arr: "16:20" },
-        { dep: "17:00", arr: "17:22" },
-        { dep: "18:00", arr: "18:22" },
-        { dep: "19:00", arr: "19:20" },
-        { dep: "20:00", arr: "20:20" },
+        { dep: "07:20", arr: "07:40" },{ dep: "09:00", arr: "09:20" },{ dep: "11:00", arr: "11:20" },
+        { dep: "13:00", arr: "13:20" },{ dep: "15:00", arr: "15:20" },{ dep: "17:00", arr: "17:22" },
       ]},
-
-      // 南駅 → 公園通り
       { route: "3系統（折り返し）", from: "南駅", to: "公園通り", platform: "南駅バスのりば", departures: [
-        { dep: "07:15", arr: "07:35" },
-        { dep: "07:45", arr: "08:05" },
-        { dep: "08:15", arr: "08:35" },
-        { dep: "08:45", arr: "09:05" },
-        { dep: "09:30", arr: "09:50" },
-        { dep: "10:30", arr: "10:50" },
-        { dep: "11:30", arr: "11:50" },
-        { dep: "12:30", arr: "12:50" },
-        { dep: "13:30", arr: "13:50" },
-        { dep: "14:30", arr: "14:50" },
-        { dep: "15:30", arr: "15:50" },
-        { dep: "16:30", arr: "16:50" },
-        { dep: "17:30", arr: "17:52" },
-        { dep: "18:30", arr: "18:52" },
-        { dep: "19:30", arr: "19:50" },
-        { dep: "20:30", arr: "20:50" },
+        { dep: "07:45", arr: "08:05" },{ dep: "09:30", arr: "09:50" },{ dep: "11:30", arr: "11:50" },
+        { dep: "13:30", arr: "13:50" },{ dep: "15:30", arr: "15:50" },{ dep: "17:30", arr: "17:52" },
       ]},
     ];
+
+    // フォールバック用の停留所一覧
+    const FALLBACK_STOPS = ["中央駅", "北口バスターミナル", "市民病院前", "公園通り", "南駅"];
 
     // =============================================
     //  ユーティリティ
@@ -744,35 +633,76 @@
     }
 
     // =============================================
-    //  検索ロジック
+    //  停留所セレクトをAPIまたはフォールバックで初期化
     // =============================================
+    async function initStops() {
+      let stops = FALLBACK_STOPS;
+      try {
+        const res = await fetch('/api/timetable/stops');
+        const data = await res.json();
+        if (data.ok && data.stops.length > 0) stops = data.stops;
+      } catch (_) { /* オフライン時はフォールバック */ }
 
-    /**
-     * 指定の出発地・目的地に対して、
-     * 現在時刻以降の便を時刻順で最大 maxCount 件返す
-     */
-    function searchBuses(from, to, maxCount = 5) {
+      ["departure", "destination"].forEach(id => {
+        const sel = document.getElementById(id);
+        const prev = sel.value;
+        // デフォルト選択肢だけ残して再構築
+        sel.innerHTML = `<option value="">-- ${id === "departure" ? "出発地" : "目的地"}を選択 --</option>`;
+        stops.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = s;
+          sel.appendChild(opt);
+        });
+        sel.value = prev;
+      });
+    }
+
+    // =============================================
+    //  検索ロジック（APIを呼び出し、失敗時はフォールバック）
+    // =============================================
+    async function searchBusesAsync(from, to, maxCount = 10) {
       const nowMin = timeToMinutes(getNowHHMM());
-      const results = [];
 
-      for (const line of TIMETABLE) {
+      try {
+        const res = await fetch(`/api/timetable?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+        const data = await res.json();
+
+        if (data.ok && data.rows.length > 0) {
+          // DBから取得したデータを使用
+          return data.rows
+            .filter(r => timeToMinutes(r.dep_time) >= nowMin)
+            .sort((a, b) => timeToMinutes(a.dep_time) - timeToMinutes(b.dep_time))
+            .slice(0, maxCount)
+            .map(r => ({
+              route:    r.route,
+              platform: r.platform || '',
+              dep:      r.dep_time,
+              arr:      r.arr_time,
+              diffMin:  timeToMinutes(r.dep_time) - nowMin,
+              source:   'db',
+            }));
+        }
+      } catch (_) { /* APIエラー → フォールバックへ */ }
+
+      // フォールバック：ハードコードデータ
+      const results = [];
+      for (const line of TIMETABLE_FALLBACK) {
         if (line.from !== from || line.to !== to) continue;
         for (const dep of line.departures) {
           if (timeToMinutes(dep.dep) >= nowMin) {
             results.push({
-              route:    line.route,
-              platform: line.platform,
-              dep:      dep.dep,
-              arr:      dep.arr,
-              diffMin:  timeToMinutes(dep.dep) - nowMin,
+              route: line.route, platform: line.platform,
+              dep: dep.dep, arr: dep.arr,
+              diffMin: timeToMinutes(dep.dep) - nowMin,
+              source: 'fallback',
             });
           }
         }
       }
-
-      // 出発時刻昇順でソート
-      results.sort((a, b) => timeToMinutes(a.dep) - timeToMinutes(b.dep));
-      return results.slice(0, maxCount);
+      return results
+        .sort((a, b) => timeToMinutes(a.dep) - timeToMinutes(b.dep))
+        .slice(0, maxCount);
     }
 
     // =============================================
@@ -860,7 +790,7 @@
       }
     }
 
-    function doSearch() {
+    async function doSearch() {
       const from = document.getElementById("departure").value;
       const to   = document.getElementById("destination").value;
       hideError();
@@ -873,30 +803,28 @@
       document.getElementById("loading").style.display = "block";
       document.getElementById("resultArea").style.display = "none";
 
-      // 少し遅延させて「検索中」感を演出
-      setTimeout(() => {
-        currentResults = searchBuses(from, to, 10);
-        document.getElementById("loading").style.display = "none";
+      currentResults = await searchBusesAsync(from, to, 10);
+      document.getElementById("loading").style.display = "none";
 
-        const header = document.getElementById("resultHeader");
-        header.innerHTML = `<strong>${from}</strong> → <strong>${to}</strong> の検索結果`;
+      const header = document.getElementById("resultHeader");
+      const source = currentResults[0]?.source === 'fallback' ? '（サンプルデータ）' : '';
+      header.innerHTML = `<strong>${from}</strong> → <strong>${to}</strong> の検索結果 <span style="font-size:0.75rem;color:#9e9e9e">${source}</span>`;
 
-        if (currentResults.length === 0) {
-          document.getElementById("busCards").innerHTML = `
-            <div class="no-bus-box">
-              <div class="icon">🌙</div>
-              <p>本日のバスは終了しています。<br>明日の運行をお待ちください。</p>
-            </div>`;
-          document.getElementById("nextBusBtn").style.display = "none";
-        } else {
-          shownCount = 1;
-          document.getElementById("nextBusBtn").style.display = "flex";
-          renderCards();
-        }
+      if (currentResults.length === 0) {
+        document.getElementById("busCards").innerHTML = `
+          <div class="no-bus-box">
+            <div class="icon">🌙</div>
+            <p>本日のバスは終了しています。<br>明日の運行をお待ちください。</p>
+          </div>`;
+        document.getElementById("nextBusBtn").style.display = "none";
+      } else {
+        shownCount = 1;
+        document.getElementById("nextBusBtn").style.display = "flex";
+        renderCards();
+      }
 
-        document.getElementById("resultArea").style.display = "block";
-        document.getElementById("resultArea").scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 400);
+      document.getElementById("resultArea").style.display = "block";
+      document.getElementById("resultArea").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     // =============================================
@@ -933,6 +861,9 @@
     }
     updateClock();
     setInterval(updateClock, 1000);
+
+    // 停留所リストを初期化
+    initStops();
 
     // ページロード時に現在時刻をもとにカウントダウン更新（表示されているカードがあれば）
     setInterval(() => {
