@@ -449,6 +449,24 @@
       color: #9e9e9e;
     }
 
+    .admin-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-top: 0.6rem;
+      color: #b0bec5;
+      text-decoration: none;
+      font-size: 0.75rem;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 0.25rem 0.65rem;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .admin-link:hover {
+      color: #546e7a;
+      border-color: #90a4ae;
+    }
+
     /* ===== レスポンシブ（PC幅） ===== */
     @media (min-width: 640px) {
       .main-content { padding-top: 2rem; }
@@ -546,7 +564,8 @@
   </main>
 
   <footer class="site-footer">
-    ※ 表示されている時刻はモックデータです。実際のバス時刻とは異なります。
+    <p>※ DBにデータがない場合はサンプルデータを表示しています。</p>
+    <a href="/hana/timetable-admin.html" class="admin-link">⚙️ 時刻表データを更新する（管理者）</a>
   </footer>
 
   <script>
