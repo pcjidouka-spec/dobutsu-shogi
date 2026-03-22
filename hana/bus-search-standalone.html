@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>🚌 バス時刻検索</title>
+
+  <!-- ホーム画面に追加したときのアプリ設定 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="バス時刻">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="description" content="現在時刻から最も早く出発するバスを検索">
+
+  <!-- ホーム画面アイコン（SVGをBase64化） -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMWE3M2U4Ii8+PHRleHQgeT0iLjllbSIgZm9udC1zaXplPSI3NSIgeD0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5qMPC90ZXh0Pjwvc3ZnPg==">
+
+  <style>
+    /* ===== リセット ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ===== 全体 ===== */
+    :root {
+      --blue:      #1a73e8;
+      --blue-dark: #0d47a1;
+      --blue-bg:   #e8f0fe;
+      --red:       #e53935;
+      --green:     #2e7d32;
+      --text:      #2d3748;
+      --text-sub:  #757575;
+      --border:    #e0e0e0;
+      --bg:        #f0f4f8;
+      --white:     #ffffff;
+      --radius:    14px;
+      --shadow:    0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+                   "BIZ UDPGothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      line-height: 1.5;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ===== ヘッダー ===== */
+    .hdr {
+      background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+      color: #fff;
+      padding: env(safe-area-inset-top, 0) 1.25rem 0;
+    }
+    .hdr-inner {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.9rem 0 0.85rem;
+    }
+    .hdr-icon { font-size: 1.75rem; line-height: 1; }
+    .hdr h1   { font-size: 1.15rem; font-weight: 700; }
+    .hdr p    { font-size: 0.7rem; opacity: 0.8; margin-top: 0.05rem; }
+
+    /* ===== 時刻バー ===== */
+    .time-bar {
+      background: var(--blue-bg);
+      border-bottom: 1px solid #c5cae9;
+      padding: 0.45rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8125rem;
+      color: #3949ab;
+    }
+    #nowTime { font-weight: 700; font-size: 1rem; letter-spacing: 0.03em; }
+
+    /* ===== メイン ===== */
+    .main {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 1.1rem 0.9rem 5rem;
+    }
+
+    /* ===== カード ===== */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 1rem;
+    }
+
+    /* ===== フォーム ===== */
+    .field { margin-bottom: 0.85rem; }
+
+    .field label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 0.35rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.2rem;
+      height: 1.2rem;
+      border-radius: 50%;
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .badge-dep { background: var(--blue); }
+    .badge-arr { background: var(--red); }
+
+    .sel-wrap { position: relative; }
+    .sel-wrap::after {
+      content: "▼";
+      position: absolute;
+      right: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.65rem;
+      color: #9e9e9e;
+      pointer-events: none;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.75rem 2.2rem 0.75rem 0.9rem;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #fafafa;
+      -webkit-appearance: none;
+      appearance: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    select:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.15);
+      background: #fff;
+    }
+
+    /* スワップボタン */
+    .swap-row {
+      display: flex;
+      justify-content: center;
+      margin: 0.3rem 0 0.85rem;
+    }
+    .swap-btn {
+      background: var(--blue-bg);
+      border: none;
+      border-radius: 50%;
+      width: 2.1rem;
+      height: 2.1rem;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      transition: background 0.2s, transform 0.25s;
+    }
+    .swap-btn:active { background: #c5cae9; transform: rotate(180deg); }
+
+    /* 検索ボタン */
+    .search-btn {
+      width: 100%;
+      padding: 0.875rem;
+      background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+      color: #fff;
+      border: none;
+      border-radius: 11px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .search-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+    /* ===== エラー ===== */
+    .err-box {
+      background: #fff3f3;
+      border: 1.5px solid #ef9a9a;
+      border-radius: 9px;
+      padding: 0.75rem 1rem;
+      color: #c62828;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.9rem;
+    }
+
+    /* ===== ローディング ===== */
+    .loading {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--text-sub);
+    }
+    .spinner {
+      width: 1.75rem;
+      height: 1.75rem;
+      border: 3px solid #e0e0e0;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 0.6rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== 結果エリア ===== */
+    .result-hdr {
+      font-size: 0.78rem;
+      color: var(--text-sub);
+      margin-bottom: 0.65rem;
+    }
+    .result-hdr strong { color: var(--text); }
+
+    /* バスカード */
+    .bus-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 0.9rem;
+    }
+
+    .card-hd {
+      padding: 0.65rem 1.1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff;
+    }
+    .card-hd.c0 { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); }
+    .card-hd.c1 { background: linear-gradient(135deg, #43a047, #1b5e20); }
+    .card-hd.c2 { background: linear-gradient(135deg, #fb8c00, #e65100); }
+    .card-hd.c3 { background: linear-gradient(135deg, #8e24aa, #4a148c); }
+    .card-hd.c4 { background: linear-gradient(135deg, #00838f, #004d40); }
+
+    .card-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.25);
+      border-radius: 20px;
+      padding: 0.15rem 0.55rem;
+    }
+    .card-route { font-size: 0.875rem; font-weight: 700; }
+
+    .card-body { padding: 1.1rem; }
+
+    .time-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.85rem;
+    }
+    .t-block { text-align: center; flex: 1; }
+    .t-block .lbl { font-size: 0.65rem; color: var(--text-sub); margin-bottom: 0.05rem; }
+    .t-block .t   { font-size: 2rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; color: var(--blue); }
+    .t-block .t.arr { color: var(--red); }
+    .t-arrow   { font-size: 1.1rem; color: #bdbdbd; flex-shrink: 0; }
+    .dur-badge {
+      font-size: 0.65rem;
+      background: var(--blue-bg);
+      color: var(--blue);
+      border-radius: 20px;
+      padding: 0.12rem 0.5rem;
+      font-weight: 700;
+      align-self: flex-end;
+      margin-bottom: 0.2rem;
+      white-space: nowrap;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      border-top: 1px solid #f0f0f0;
+      padding-top: 0.85rem;
+    }
+    .d-item {
+      background: #f8f9fa;
+      border-radius: 7px;
+      padding: 0.5rem 0.65rem;
+    }
+    .d-lbl { font-size: 0.65rem; color: var(--text-sub); margin-bottom: 0.1rem; }
+    .d-val { font-size: 0.875rem; font-weight: 700; color: var(--text); }
+    .d-val.hl { color: var(--blue); }
+
+    .countdown {
+      background: var(--blue-bg);
+      border-radius: 7px;
+      padding: 0.5rem 0.65rem;
+      margin-top: 0.65rem;
+      font-size: 0.8125rem;
+      color: #3949ab;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .countdown strong { font-size: 1rem; color: var(--blue); }
+
+    /* 次の便ボタン */
+    .next-btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--white);
+      color: var(--blue);
+      border: 2px solid var(--blue);
+      border-radius: 11px;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.65rem;
+      transition: background 0.2s;
+    }
+    .next-btn:active { background: var(--blue-bg); }
+    .next-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* バスなし */
+    .no-bus {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 2rem 1rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .no-bus .ico { font-size: 2.75rem; margin-bottom: 0.4rem; }
+    .no-bus p { color: var(--text-sub); font-size: 0.9rem; }
+
+    /* ===== フッター ===== */
+    .footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: 0.7rem;
+      color: #bdbdbd;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ヘッダー -->
+<header class="hdr">
+  <div class="hdr-inner">
+    <span class="hdr-icon">🚌</span>
+    <div>
+      <h1>バス時刻検索</h1>
+      <p>現在時刻から最も早い便を表示</p>
+    </div>
+  </div>
+</header>
+
+<!-- 現在時刻バー -->
+<div class="time-bar">
+  🕐 現在時刻：<span id="nowTime">--:--:--</span>
+</div>
+
+<main class="main">
+
+  <!-- 検索フォーム -->
+  <div class="card">
+    <div class="card-title">🔍 バスを検索する</div>
+
+    <!-- 出発地 -->
+    <div class="field">
+      <label>
+        <span class="badge badge-dep">出</span>出発地
+      </label>
+      <div class="sel-wrap">
+        <select id="dep"></select>
+      </div>
+    </div>
+
+    <!-- スワップ -->
+    <div class="swap-row">
+      <button class="swap-btn" id="swapBtn" aria-label="入れ替え">⇅</button>
+    </div>
+
+    <!-- 目的地 -->
+    <div class="field">
+      <label>
+        <span class="badge badge-arr">着</span>目的地
+      </label>
+      <div class="sel-wrap">
+        <select id="arr"></select>
+      </div>
+    </div>
+
+    <button class="search-btn" id="searchBtn">🚌 この時刻以降のバスを検索</button>
+  </div>
+
+  <!-- エラー -->
+  <div class="err-box" id="errBox" style="display:none">
+    <span>⚠️</span><span id="errMsg"></span>
+  </div>
+
+  <!-- ローディング -->
+  <div class="loading" id="loading" style="display:none">
+    <div class="spinner"></div><p>検索中…</p>
+  </div>
+
+  <!-- 結果 -->
+  <div id="resultArea" style="display:none">
+    <div class="result-hdr" id="resultHdr"></div>
+    <div id="cards"></div>
+    <button class="next-btn" id="nextBtn">➕ 次の便も見る</button>
+  </div>
+
+</main>
+
+<footer class="footer">
+  ※ このファイルに直接書かれた時刻表データを使用しています<br>
+  更新方法はファイル内の「時刻表データ」セクションをご確認ください
+</footer>
+
+<script>
+// ================================================================
+//  ✏️  時刻表データ（ここを編集してください）
+//
+//  書き方：
+//    route    … 路線名
+//    from     … 出発地（セレクトに自動表示されます）
+//    to       … 目的地
+//    platform … 乗り場（省略可）
+//    times    … [["出発HH:MM", "到着HH:MM"], ...] の配列
+//
+//  ✅ 追加方法：
+//     下の配列に { route, from, to, platform, times } を追加するだけ
+//  ✅ 削除方法：
+//     不要な {} ブロックをまるごと削除
+//  ✅ 停留所の増やし方：
+//     from / to に新しい名前を書くと自動でセレクトに追加されます
+// ================================================================
+const TIMETABLE = [
+
+  // ---- 1系統：中央駅 → 北口バスターミナル ----
+  {
+    route: "1系統",
+    from: "中央駅",
+    to: "北口バスターミナル",
+    platform: "1番のりば",
+    times: [
+      ["06:10","06:28"], ["06:40","06:58"], ["07:00","07:18"],
+      ["07:15","07:33"], ["07:30","07:48"], ["07:45","08:03"],
+      ["08:00","08:20"], ["08:20","08:40"], ["08:40","09:00"],
+      ["09:00","09:18"], ["09:30","09:48"], ["10:00","10:18"],
+      ["10:30","10:48"], ["11:00","11:18"], ["11:30","11:48"],
+      ["12:00","12:18"], ["12:30","12:48"], ["13:00","13:18"],
+      ["14:00","14:18"], ["15:00","15:18"], ["16:00","16:18"],
+      ["17:00","17:20"], ["17:30","17:52"], ["18:00","18:22"],
+      ["18:30","18:48"], ["19:00","19:18"], ["20:00","20:18"],
+      ["21:00","21:18"], ["22:00","22:18"]
+    ]
+  },
+
+  // ---- 1系統（折り返し）：北口バスターミナル → 中央駅 ----
+  {
+    route: "1系統",
+    from: "北口バスターミナル",
+    to: "中央駅",
+    platform: "3番のりば",
+    times: [
+      ["06:35","06:53"], ["07:05","07:23"], ["07:20","07:38"],
+      ["07:35","07:53"], ["08:00","08:20"], ["08:30","08:50"],
+      ["09:05","09:23"], ["09:35","09:53"], ["10:05","10:23"],
+      ["11:05","11:23"], ["12:05","12:23"], ["13:05","13:23"],
+      ["14:05","14:23"], ["15:05","15:23"], ["16:05","16:23"],
+      ["17:05","17:25"], ["17:35","17:57"], ["18:05","18:27"],
+      ["19:05","19:23"], ["20:05","20:23"], ["21:05","21:23"],
+      ["22:05","22:23"]
+    ]
+  },
+
+  // ---- 2系統：中央駅 → 市民病院前 ----
+  {
+    route: "2系統",
+    from: "中央駅",
+    to: "市民病院前",
+    platform: "2番のりば",
+    times: [
+      ["07:00","07:22"], ["08:00","08:24"], ["09:00","09:22"],
+      ["10:00","10:22"], ["11:00","11:22"], ["12:00","12:22"],
+      ["13:00","13:22"], ["14:00","14:22"], ["15:00","15:22"],
+      ["16:00","16:22"], ["17:00","17:25"], ["18:00","18:25"],
+      ["19:00","19:22"], ["20:00","20:22"]
+    ]
+  },
+
+  // ---- 2系統（折り返し）：市民病院前 → 中央駅 ----
+  {
+    route: "2系統",
+    from: "市民病院前",
+    to: "中央駅",
+    platform: "病院バス停",
+    times: [
+      ["07:30","07:52"], ["08:30","08:54"], ["09:30","09:52"],
+      ["10:30","10:52"], ["11:30","11:52"], ["12:30","12:52"],
+      ["13:30","13:52"], ["14:30","14:52"], ["15:30","15:52"],
+      ["16:30","16:52"], ["17:30","17:55"], ["18:30","18:55"],
+      ["19:30","19:52"]
+    ]
+  },
+
+  // ---- 3系統：公園通り → 南駅 ----
+  {
+    route: "3系統",
+    from: "公園通り",
+    to: "南駅",
+    platform: "公園通りバス停",
+    times: [
+      ["06:50","07:10"], ["07:20","07:40"], ["07:50","08:10"],
+      ["08:20","08:40"], ["09:00","09:20"], ["10:00","10:20"],
+      ["11:00","11:20"], ["12:00","12:20"], ["13:00","13:20"],
+      ["14:00","14:20"], ["15:00","15:20"], ["16:00","16:20"],
+      ["17:00","17:22"], ["18:00","18:22"], ["19:00","19:20"],
+      ["20:00","20:20"]
+    ]
+  },
+
+  // ---- 3系統（折り返し）：南駅 → 公園通り ----
+  {
+    route: "3系統",
+    from: "南駅",
+    to: "公園通り",
+    platform: "南駅バスのりば",
+    times: [
+      ["07:15","07:35"], ["07:45","08:05"], ["08:15","08:35"],
+      ["08:45","09:05"], ["09:30","09:50"], ["10:30","10:50"],
+      ["11:30","11:50"], ["12:30","12:50"], ["13:30","13:50"],
+      ["14:30","14:50"], ["15:30","15:50"], ["16:30","16:50"],
+      ["17:30","17:52"], ["18:30","18:52"], ["19:30","19:50"],
+      ["20:30","20:50"]
+    ]
+  }
+
+]; // ← ここまでが時刻表データ
+
+
+// ================================================================
+//  以下はロジック（通常は編集不要）
+// ================================================================
+
+// --- ユーティリティ ---
+const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+const pad2  = n => String(n).padStart(2,"0");
+const nowHHMM = () => { const d=new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const nowHMS  = () => { const d=new Date(); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+const rideMins = (d,a) => { const diff = toMin(a)-toMin(d); return diff>=0 ? diff : diff+1440; };
+const untilLabel = m => {
+  if (m <= 0) return "まもなく出発";
+  if (m < 60) return `${m}分後`;
+  const h = Math.floor(m/60), r = m%60;
+  return r===0 ? `${h}時間後` : `${h}時間${r}分後`;
+};
+
+// --- 停留所セレクト初期化 ---
+function initStops() {
+  const stops = [...new Set(TIMETABLE.flatMap(r => [r.from, r.to]))].sort();
+  ["dep","arr"].forEach((id,i) => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = `<option value="">-- ${i===0?"出発地":"目的地"}を選択 --</option>`;
+    stops.forEach(s => { const o=document.createElement("option"); o.value=o.textContent=s; sel.appendChild(o); });
+  });
+}
+
+// --- 検索 ---
+function search(from, to) {
+  const nowMin = toMin(nowHHMM());
+  const results = [];
+  for (const line of TIMETABLE) {
+    if (line.from !== from || line.to !== to) continue;
+    for (const [dep,arr] of line.times) {
+      if (toMin(dep) >= nowMin) {
+        results.push({ route: line.route, platform: line.platform||"", dep, arr,
+                       diffMin: toMin(dep)-nowMin });
+      }
+    }
+  }
+  return results.sort((a,b) => toMin(a.dep)-toMin(b.dep)).slice(0,10);
+}
+
+// --- カード生成 ---
+const BADGES  = ["🚌 次のバス","🟢 次々のバス","🟠 その次","🔵 さらに次","📋 他の便"];
+const HD_CLS  = ["c0","c1","c2","c3","c4"];
+
+function buildCard(bus, idx) {
+  const ride  = rideMins(bus.dep, bus.arr);
+  const badge = BADGES[idx] || `${idx+1}番目`;
+  const hcls  = HD_CLS[idx] || "c4";
+  return `
+    <div class="bus-card">
+      <div class="card-hd ${hcls}">
+        <span class="card-badge">${badge}</span>
+        <span class="card-route">${bus.route}</span>
+      </div>
+      <div class="card-body">
+        <div class="time-row">
+          <div class="t-block">
+            <div class="lbl">出発</div>
+            <div class="t">${bus.dep}</div>
+          </div>
+          <div class="t-arrow">→</div>
+          <div class="t-block">
+            <div class="lbl">到着</div>
+            <div class="t arr">${bus.arr}</div>
+          </div>
+          <div class="dur-badge">約${ride}分</div>
+        </div>
+        <div class="detail-grid">
+          <div class="d-item">
+            <div class="d-lbl">🅿 乗り場</div>
+            <div class="d-val hl">${bus.platform || '―'}</div>
+          </div>
+          <div class="d-item">
+            <div class="d-lbl">⏱ 出発まで</div>
+            <div class="d-val">${untilLabel(bus.diffMin)}</div>
+          </div>
+        </div>
+        <div class="countdown">⏰ <span>出発まであと <strong>${untilLabel(bus.diffMin)}</strong></span></div>
+      </div>
+    </div>`;
+}
+
+// --- UI制御 ---
+let results=[], shown=0;
+
+function showErr(msg) {
+  document.getElementById("errMsg").textContent = msg;
+  document.getElementById("errBox").style.display = "flex";
+}
+function hideErr() { document.getElementById("errBox").style.display = "none"; }
+
+function renderCards() {
+  const c = document.getElementById("cards");
+  c.innerHTML = "";
+  for (let i=0; i<shown; i++) c.insertAdjacentHTML("beforeend", buildCard(results[i],i));
+  const btn = document.getElementById("nextBtn");
+  if (shown >= results.length) {
+    btn.disabled = true;
+    btn.textContent = "✅ 本日の便はすべて表示しました";
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = `➕ 次の便も見る（残り${results.length-shown}件）`;
+  }
+}
+
+async function doSearch() {
+  const from = document.getElementById("dep").value;
+  const to   = document.getElementById("arr").value;
+  hideErr();
+  if (!from)       { showErr("出発地を選択してください"); return; }
+  if (!to)         { showErr("目的地を選択してください"); return; }
+  if (from === to) { showErr("出発地と目的地が同じです"); return; }
+
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("resultArea").style.display = "none";
+
+  // 少し待ってからレンダリング（iOS の描画更新を待つ）
+  await new Promise(r => setTimeout(r, 150));
+
+  results = search(from, to);
+  document.getElementById("loading").style.display = "none";
+
+  const hdr = document.getElementById("resultHdr");
+  hdr.innerHTML = `<strong>${from}</strong> → <strong>${to}</strong> の検索結果`;
+
+  if (results.length === 0) {
+    document.getElementById("cards").innerHTML = `
+      <div class="no-bus"><div class="ico">🌙</div>
+      <p>本日のバスは終了しています。<br>明日の運行をお待ちください。</p></div>`;
+    document.getElementById("nextBtn").style.display = "none";
+  } else {
+    shown = 1;
+    document.getElementById("nextBtn").style.display = "flex";
+    renderCards();
+  }
+
+  document.getElementById("resultArea").style.display = "block";
+  document.getElementById("resultArea").scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+// --- イベント ---
+document.getElementById("searchBtn").addEventListener("click", doSearch);
+document.getElementById("nextBtn").addEventListener("click", () => {
+  if (shown < results.length) { shown++; renderCards(); }
+});
+document.getElementById("swapBtn").addEventListener("click", () => {
+  const d = document.getElementById("dep");
+  const a = document.getElementById("arr");
+  [d.value, a.value] = [a.value, d.value];
+});
+document.addEventListener("keydown", e => { if (e.key==="Enter") doSearch(); });
+
+// --- 時計 ---
+function tick() { document.getElementById("nowTime").textContent = nowHMS(); }
+tick();
+setInterval(tick, 1000);
+
+// 1分ごとにカードのカウントダウンを更新
+setInterval(() => {
+  if (shown > 0 && results.length > 0) {
+    const nowMin = toMin(nowHHMM());
+    results = results.map(b=>({...b, diffMin: toMin(b.dep)-nowMin})).filter(b=>b.diffMin>=0);
+    if (!results.length) {
+      document.getElementById("cards").innerHTML=`<div class="no-bus"><div class="ico">🏁</div>
+        <p>便がすべて出発しました。<br>再度検索してください。</p></div>`;
+      document.getElementById("nextBtn").style.display="none";
+    } else {
+      shown = Math.min(shown, results.length);
+      renderCards();
+    }
+  }
+}, 60000);
+
+// --- 初期化 ---
+initStops();
+</script>
+</body>
+</html>
