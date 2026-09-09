@@ -60,8 +60,8 @@ npm start          # = node server.js
 - 秘密情報 (Supabase のキー・DB のパスワード) をこのファイル・`CLAUDE.md`・
   ソースコードに書かない。`.env` か Render の環境変数に置く
 - `*.pem` / `*.key` / `*token*` / `*password*` / `*api_key*` という名前を使わない
-  (夜間バックアップの除外パターンに一致して消える。
-  詳細: `C:\code\nomadproject\docs\INFRASTRUCTURE.md`)
+  (夜間バックアップの除外パターンに一致して失われるため。
+  理由と詳細はユーザー共通ルール側の「バックアップの前提」にある)
 
 ## Codex 固有
 
