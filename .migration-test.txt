@@ -1,0 +1,3 @@
+node --check server.js && node --check script.js && node --check server_postgresql.js
+# テストフレームワークは無い (package.json の scripts は start のみ)。AC8 は構文チェックで代用する。
+# 移行前ベースライン (2026-09-10, node v25.8.2): exit 0 / 出力なし / 約 0.5 秒
