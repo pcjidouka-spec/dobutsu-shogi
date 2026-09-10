@@ -161,18 +161,10 @@ app.post('/api/db', requireAuth, async (req, res) => {
     }
 });
 
-// 任意のSQL実行 (開発者用)
-app.post('/api/sql', requireAuth, async (req, res) => {
-    try {
-        const { query } = req.body;
-        if (!query) return res.status(400).send('Query is required');
-
-        const result = await pool.query(query);
-        res.json({ rows: result.rows, fields: result.fields });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+// 2026-09-10: 任意SQLを実行する /api/sql を削除した。
+// 防御が x-dev-password 1つだけで、通れば DB を何でもできる状態だった。
+// クライアント側に呼び出しは無く (grep で 0 件)、消しても機能は落ちない。
+// DB を直接見たいときは Supabase のコンソールを使う。ここに再追加しない。
 
 // --- User Management API ---
 
